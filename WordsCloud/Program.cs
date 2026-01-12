@@ -15,7 +15,7 @@ namespace WordsCloud
             lot[0] = "pierwszy tekst";
             lot[1] = "drugi tekst";
 
-            var wsResults = getScroringWords(lot);
+            var wsResults = getScoringWords(lot);
 
             foreach(WordScore wsResult in wsResults)
             {
@@ -25,7 +25,7 @@ namespace WordsCloud
             Console.ReadLine();
         }
 
-        public static List<WordScore> getScroringWords(string[] listOfText)
+        public static List<WordScore> getScoringWords(string[] listOfText)
         {
             var ws = new List<WordScore>();
 
