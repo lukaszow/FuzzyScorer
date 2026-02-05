@@ -11,45 +11,46 @@ namespace WordsCloud
     {
         static void Main(string[] args)
         {
-            string[] lot = new string[2];
-            lot[0] = "pierwszy tekst";
-            lot[1] = "drugi tekst";
+            string[] texts = { "pierwszy tekst", "drugi tekst", "pierwszy tekst" };
 
-            var wsResults = getScoringWords(lot);
+            var results = GetScoringWords(texts);
 
-            foreach(WordScore wsResult in wsResults)
+            foreach (var result in results)
             {
-                Console.WriteLine("Word = " + wsResult.text);
+                Console.WriteLine($"Word = {result.Text}, Score = {result.Score}");
             }
 
             Console.ReadLine();
         }
 
-        public static List<WordScore> getScoringWords(string[] listOfText)
+        /// <summary>
+        /// Returns a list of words with their scores based on the number of occurrences in the provided texts.
+        /// </summary>
+        /// <param name="listOfText">Array of strings to analyze.</param>
+        /// <returns>A list of WordScore objects.</returns>
+        public static List<WordScore> GetScoringWords(string[] listOfText)
         {
-            var ws = new List<WordScore>();
+            if (listOfText == null || listOfText.Length == 0)
+                return new List<WordScore>();
 
-            for(int i=0; i<listOfText.Length; i++)
-            {
-                for (int j = 0; j < listOfText[i].Split(' ').Length; j++)
-                    ws.Add(new WordScore(listOfText[i].Split(' ')[j], 0));
-                    /* tutaj pod drugi parametr napisac funkcje ktora oblicza ilosc wystapien slowa w juz istniejacej bazie
-                        - funkcja docelowo przyjmuje parametr podobienstwa (algorytm lavensteina)
-                    */
-            }
-            return ws;
+            // Group by word and count occurrences
+            return listOfText
+                .SelectMany(text => text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+                .GroupBy(word => word, StringComparer.OrdinalIgnoreCase)
+                .Select(group => new WordScore(group.Key, group.Count()))
+                .ToList();
         }
     }
 
     public class WordScore
     {
-        public string text;
-        public int score;
+        public string Text { get; set; }
+        public int Score { get; set; }
 
-        public WordScore(string t, int s)
+        public WordScore(string text, int score)
         {
-            text = t;
-            score = s;
+            Text = text;
+            Score = score;
         }
     }
 }
