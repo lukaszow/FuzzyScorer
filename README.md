@@ -42,6 +42,14 @@ To run the application and see the sample word analysis:
    dotnet run
    ```
 
+### Running Tests
+To execute the unit tests:
+1. Open a terminal in the project root.
+2. Run the tests:
+   ```bash
+   dotnet test
+   ```
+
 ### Using the Scoring Logic
 You can use the `GetScoringWords` static method to analyze arrays of strings:
 

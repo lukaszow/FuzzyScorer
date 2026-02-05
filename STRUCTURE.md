@@ -9,12 +9,15 @@ WordsCloud/
 ├── AI_RULES.md                # Project-specific AI guidelines and standards
 ├── STRUCTURE.md               # This file
 ├── WordsCloud.sln             # Visual Studio Solution file
-└── WordsCloud/                # Main project directory
-    ├── WordsCloud.csproj      # .NET 9.0 project file
-    ├── App.config             # Application configuration
-    ├── Program.cs             # Entry point and core logic
-    └── Properties/            # Project assembly information
-        └── AssemblyInfo.cs    # Assembly attributes
+├── WordsCloud/                # Main project directory
+│   ├── WordsCloud.csproj      # .NET 9.0 project file
+│   ├── App.config             # Application configuration
+│   ├── Program.cs             # Entry point and core logic
+│   ├── WordScore.cs           # Data model for word analysis
+│   └── Properties/            # Project assembly information
+└── WordsCloud.Tests/          # Unit test project (xUnit)
+    ├── WordsCloud.Tests.csproj
+    └── ScoringTests.cs        # Unit tests for scoring logic
 ```
 
 ## Architecture & Guidelines
