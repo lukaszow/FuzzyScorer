@@ -1,6 +1,6 @@
-# WordsCloud
+# FuzzyScorer
 
-WordsCloud is a .NET 9.0 console application designed to analyze text data and generate word scoring results. These results are intended to be used for creating word clouds, where the "score" typically represents the frequency of a word in a given text.
+FuzzyScorer is a .NET 9.0 console application designed to analyze text data and generate word scoring results. These results are intended to be used for creating word clouds, where the "score" typically represents the frequency of a word in a given text.
 
 ## 🎯 Project Goal
 
@@ -11,7 +11,7 @@ The primary objective is to provide a robust engine for:
 
 ## 🧠 Why Levenshtein? The "Spellchecker" vs. The "Philosopher"
 
-While modern AI models (LLMs) act as **Philosophers**, understanding the *meaning* (semantic similarity) of words—knowing that "Cat" and "Dog" are both pets—**WordsCloud** acts as a **Spellchecker**. 
+While modern AI models (LLMs) act as **Philosophers**, understanding the *meaning* (semantic similarity) of words—knowing that "Cat" and "Dog" are both pets—**FuzzyScorer** acts as a **Spellchecker**. 
 
 We prioritize **structural similarity**. Instead of asking what a word *means*, we ask how it is *built*. This allows the engine to recognize that "TIGER" and "TlGER" are likely the same word, even if an AI might get confused by the visual typo.
 
@@ -50,7 +50,7 @@ To run the application and see the sample word analysis:
 1. Open a terminal in the project root.
 2. Navigate to the project directory:
    ```bash
-   cd WordsCloud
+   cd FuzzyScorer
    ```
 3. Run the application:
    ```bash

@@ -1,4 +1,4 @@
-namespace WordsCloud
+namespace FuzzyScorer
 {
     /// <summary>
     /// Represents a word and its associated score.

@@ -3,22 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace WordsCloud
+namespace FuzzyScorer
 {
     /// <summary>
-    /// Entry point for the WordsCloud application.
+    /// Entry point for the FuzzyScorer application.
     /// </summary>
     public class Program
     {
         /// <summary>
-        /// Entry point for the WordsCloud application.
+        /// Entry point for the FuzzyScorer application.
         /// </summary>
         /// <param name="args">Command-line arguments.</param>
         public static async Task<int> Main(string[] args)
         {
             try
             {
-                Console.WriteLine("--- WordsCloud Analysis ---");
+                Console.Error.WriteLine("--- FuzzyScorer Analysis ---");
 
                 string combinedText;
                 if (args.Length > 0)
@@ -30,18 +30,18 @@ namespace WordsCloud
                     // Default values if no arguments provided
                     var defaultTexts = new[] { "pierwszy tekst", "drugi tekst", "pierwszy tekst" };
                     combinedText = string.Join(" ", defaultTexts);
-                    Console.WriteLine("No arguments provided. Using default sample text.");
+                    Console.Error.WriteLine("No arguments provided. Using default sample text.");
                 }
 
                 var results = GetScoringWords(combinedText);
 
-                Console.WriteLine("\nAnalysis Results:");
+                Console.Error.WriteLine("\nAnalysis Results:");
                 foreach (var result in results)
                 {
-                    Console.WriteLine($"- {result.Text}: {result.Score}");
+                    Console.Error.WriteLine($"- {result.Text}: {result.Score}");
                 }
 
-                Console.WriteLine("\nTask completed successfully.");
+                Console.Error.WriteLine("\nTask completed successfully.");
                 return 0; // Success
             }
             catch (Exception ex)

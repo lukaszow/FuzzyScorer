@@ -1,9 +1,9 @@
 using Xunit;
-using WordsCloud;
+using FuzzyScorer;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace WordsCloud.Tests
+namespace FuzzyScorer.Tests
 {
     /// <summary>
     /// Unit tests for word scoring methods in the Program class.

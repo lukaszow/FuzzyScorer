@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\WordsCloud\WordsCloud.csproj" />
+    <ProjectReference Include="..\FuzzyScorer\FuzzyScorer.csproj" />
   </ItemGroup>
 
 </Project>

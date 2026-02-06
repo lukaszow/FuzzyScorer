@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordsCloud", "WordsCloud\WordsCloud.csproj", "{AA044997-03BD-4D1B-B0D2-8F63B09DA990}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FuzzyScorer", "FuzzyScorer\FuzzyScorer.csproj", "{AA044997-03BD-4D1B-B0D2-8F63B09DA990}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordsCloud.Tests", "WordsCloud.Tests\WordsCloud.Tests.csproj", "{1658B273-40C2-4F80-887B-6B776092BAEC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FuzzyScorer.Tests", "FuzzyScorer.Tests\FuzzyScorer.Tests.csproj", "{1658B273-40C2-4F80-887B-6B776092BAEC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,6 +1,6 @@
-# AI Rules - WordsCloud Project
+# AI Rules - FuzzyScorer Project
 
-This document defines the coding standards, architectural patterns, and rules for AI contributions to the `WordsCloud` project.
+This document defines the coding standards, architectural patterns, and rules for AI contributions to the `FuzzyScorer` project.
 
 ## Tech Stack
 - **Core**: .NET 9.0

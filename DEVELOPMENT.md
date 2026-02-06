@@ -1,6 +1,6 @@
 # Development Notes & AI Guidelines
 
-This document provides guidelines for developers and AI agents working on WordsCloud project.
+This document provides guidelines for developers and AI agents working on FuzzyScorer project.
 
 ## 🤖 AI Session Bootstrap
 
