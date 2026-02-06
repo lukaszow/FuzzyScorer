@@ -1,6 +1,6 @@
 # FuzzyScorer
 
-FuzzyScorer is a .NET 9.0 console application designed to analyze text data and generate word scoring results. These results are intended to be used for creating word clouds, where the "score" typically represents the frequency of a word in a given text.
+FuzzyScorer is a .NET 9.0 class library designed to analyze text data and generate word scoring results. These results are intended to be used for creating word clouds, where the "score" typically represents the frequency of a word in a given text.
 
 ## 🎯 Project Goal
 
@@ -28,14 +28,14 @@ We prioritize **structural similarity**. Instead of asking what a word *means*, 
 
 - **Platform**: .NET 9.0
 - **Language**: C# 13
-- **Project Type**: Console Application
+- **Project Type**: Library
 - **Key Features**: LINQ for data processing, Null Safety (Nullable enable).
 
 ## 🏗 Architecture & Project Structure
 
 The project follows a strictly defined structure as documented in [STRUCTURE.md](STRUCTURE.md).
 
-- **Program.cs**: Contains the entry point and core word scoring logic.
+- **Scorer.cs**: Contains the core word scoring and similarity logic.
 - **WordScore.cs**: A POCO (Plain Old CLR Object) representing a word and its associated score.
 - **AI_RULES.md**: Contains specific coding standards and AI-specific guidelines for this project.
 
@@ -43,19 +43,6 @@ The project follows a strictly defined structure as documented in [STRUCTURE.md]
 
 ### Prerequisites
 - [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-
-### Running the Application
-To run the application and see the sample word analysis:
-
-1. Open a terminal in the project root.
-2. Navigate to the project directory:
-   ```bash
-   cd FuzzyScorer
-   ```
-3. Run the application:
-   ```bash
-   dotnet run
-   ```
 
 ### Running Tests
 To execute the unit tests:
@@ -66,11 +53,11 @@ To execute the unit tests:
    ```
 
 ### Using the Scoring Logic
-You can use the `GetScoringWords` static method to analyze arrays of strings:
+You can use the `Scorer.GetScoringWords` static method to analyze text:
 
 ```csharp
-string[] texts = { "Hello world", "hello again" };
-var results = Program.GetScoringWords(texts);
+string text = "Hello world hello again";
+var results = Scorer.GetScoringWords(text);
 
 foreach (var result in results)
 {
