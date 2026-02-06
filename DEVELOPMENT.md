@@ -15,7 +15,7 @@ To maintain perfect context and architectural consistency while saving LLM token
 
 The following files define the core project governance:
 
-1.  **[AI_RULES.md](AI_RULES.md)**: Defines the tech stack (React 19+, Vite, Tailwind), coding standards, and language rules.
+1.  **[AI_RULES.md](AI_RULES.md)**: Defines the tech stack (.NET 9.0, C# 13, Console Application), coding standards, and language rules.
 2.  **[STRUCTURE.md](STRUCTURE.md)**: Defines the strict directory hierarchy and data flow (Processing -> State -> Display).
 
 ## Universal Compatibility
