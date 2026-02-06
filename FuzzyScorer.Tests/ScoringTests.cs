@@ -22,7 +22,7 @@ namespace FuzzyScorer.Tests
             string inputText = "apple banana apple cherry banana apple";
 
             // Act
-            var results = Program.GetScoringWords(inputText);
+            var results = Scorer.GetScoringWords(inputText);
 
             // Assert
             Assert.Equal(3, results.Count);
@@ -38,7 +38,7 @@ namespace FuzzyScorer.Tests
         public void Frequency_NullInput_ShouldReturnEmptyList()
         {
             // Act
-            var results = Program.GetScoringWords(null);
+            var results = Scorer.GetScoringWords(null);
 
             // Assert
             Assert.NotNull(results);
@@ -55,7 +55,7 @@ namespace FuzzyScorer.Tests
             string inputText = "   ";
 
             // Act
-            var results = Program.GetScoringWords(inputText);
+            var results = Scorer.GetScoringWords(inputText);
 
             // Assert
             Assert.Empty(results);
@@ -76,7 +76,7 @@ namespace FuzzyScorer.Tests
             string inputText = "apple aple apple";
 
             // Act
-            var results = Program.GetScoringWords(inputText, 1);
+            var results = Scorer.GetScoringWords(inputText, 1);
 
             // Assert
             Assert.Single(results);
@@ -94,7 +94,7 @@ namespace FuzzyScorer.Tests
             string inputText = "apple aple";
 
             // Act
-            var results = Program.GetScoringWords(inputText, 0);
+            var results = Scorer.GetScoringWords(inputText, 0);
 
             // Assert
             Assert.Equal(2, results.Count);
@@ -112,7 +112,7 @@ namespace FuzzyScorer.Tests
             string inputText = "apple banana cherry";
 
             // Act
-            var results = Program.GetScoringWords(inputText, 10);
+            var results = Scorer.GetScoringWords(inputText, 10);
 
             // Assert
             Assert.Single(results);

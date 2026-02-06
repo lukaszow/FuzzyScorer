@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -6,51 +6,10 @@ using System.Threading.Tasks;
 namespace FuzzyScorer
 {
     /// <summary>
-    /// Entry point for the FuzzyScorer application.
+    /// Core scoring logic for the FuzzyScorer library.
     /// </summary>
-    public class Program
+    public class Scorer
     {
-        /// <summary>
-        /// Entry point for the FuzzyScorer application.
-        /// </summary>
-        /// <param name="args">Command-line arguments.</param>
-        public static async Task<int> Main(string[] args)
-        {
-            try
-            {
-                Console.Error.WriteLine("--- FuzzyScorer Analysis ---");
-
-                string combinedText;
-                if (args.Length > 0)
-                {
-                    combinedText = string.Join(" ", args);
-                }
-                else
-                {
-                    // Default values if no arguments provided
-                    var defaultTexts = new[] { "pierwszy tekst", "drugi tekst", "pierwszy tekst" };
-                    combinedText = string.Join(" ", defaultTexts);
-                    Console.Error.WriteLine("No arguments provided. Using default sample text.");
-                }
-
-                var results = GetScoringWords(combinedText);
-
-                Console.Error.WriteLine("\nAnalysis Results:");
-                foreach (var result in results)
-                {
-                    Console.Error.WriteLine($"- {result.Text}: {result.Score}");
-                }
-
-                Console.Error.WriteLine("\nTask completed successfully.");
-                return 0; // Success
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"\nAn error occurred: {ex.Message}");
-                return 1; // Failure
-            }
-        }
-
         /// <summary>
         /// Analyzes the provided text by breaking it down into individual words and counting how many times each word appears.
         /// It ignores whether a word is written in UPPERCASE or lowercase (e.g., "Apple" and "apple" are treated as the same word).

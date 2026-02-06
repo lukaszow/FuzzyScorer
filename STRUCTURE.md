@@ -12,7 +12,7 @@ FuzzyScorer/
 ├── FuzzyScorer/                # Main project directory
 │   ├── FuzzyScorer.csproj      # .NET 9.0 project file
 │   ├── App.config             # Application configuration
-│   ├── Program.cs             # Entry point and core logic
+│   ├── Scorer.cs              # Core scoring logic
 │   ├── WordScore.cs           # Data model for word analysis
 │   └── Properties/            # Project assembly information
 └── FuzzyScorer.Tests/          # Unit test project (xUnit)
@@ -28,7 +28,7 @@ FuzzyScorer/
 - If the project grows, follow standard .NET conventions (e.g., `Services/`, `Models/`, `Interfaces/`) within the `FuzzyScorer/` directory.
 
 ### 2. Implementation Pattern
-- **Current State**: A monolithic console application for simplicity.
+- **Current State**: A library providing word frequency and similarity scoring.
 - **Data Models**: Use simple POCOs like `WordScore` for data representation.
 - **Methods**: Core logic (like word scoring) is currently implemented as static methods in `Program`. In future refactoring, these should be moved to dedicated service classes.
 

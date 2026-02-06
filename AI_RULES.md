@@ -5,7 +5,7 @@ This document defines the coding standards, architectural patterns, and rules fo
 ## Tech Stack
 - **Core**: .NET 9.0
 - **Language**: C# 13
-- **Project Type**: Console Application
+- **Project Type**: Library
 
 ## Coding Standards
 
