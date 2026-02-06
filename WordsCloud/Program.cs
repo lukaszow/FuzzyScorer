@@ -52,10 +52,14 @@ namespace WordsCloud
         }
 
         /// <summary>
-        /// Returns a list of words with their scores based on the number of occurrences in the provided text.
+        /// Analyzes the provided text by breaking it down into individual words and counting how many times each word appears.
+        /// It ignores whether a word is written in UPPERCASE or lowercase (e.g., "Apple" and "apple" are treated as the same word).
         /// </summary>
-        /// <param name="inputText">The string text to analyze.</param>
-        /// <returns>A list of WordScore objects.</returns>
+        /// <param name="inputText">The raw text you want to analyze for word frequency.</param>
+        /// <returns>
+        /// A list of WordScore objects, where each object contains a unique word from the text 
+        /// and a number representing how many times that specific word was found.
+        /// </returns>
         public static List<WordScore> GetScoringWords(string? inputText)
         {
             if (string.IsNullOrWhiteSpace(inputText))
@@ -69,12 +73,18 @@ namespace WordsCloud
         }
 
         /// <summary>
-        /// Returns a list of words with their scores based on the number of occurrences in the provided text.
-        /// Occurence is calculated using Levenshtein distance where words are grouped if their distance is within the targetSimilarity.
+        /// Analyzes text and groups words together even if they aren't identical, as long as they are visually similar.
+        /// It uses the Levenshtein distance to catch variations like typos or different word endings (e.g., "TIGER" and "TlGER").
         /// </summary>
-        /// <param name="inputText">The string text to analyze.</param>
-        /// <param name="targetSimilarity">Maximum Levenshtein distance allowed for words to be grouped together.</param>
-        /// <returns>A list of WordScore objects.</returns>
+        /// <param name="inputText">The raw text you want to analyze.</param>
+        /// <param name="targetSimilarity">
+        /// The maximum number of character edits (insertions, deletions, or substitutions) allowed to group words.
+        /// A higher number means more aggressive grouping of less-similar words.
+        /// </param>
+        /// <returns>
+        /// A list of WordScore objects where similar words are merged into a single entry, 
+        /// using the first word encountered as the "representative" for the group.
+        /// </returns>
         public static List<WordScore> GetScoringWords(string? inputText, int targetSimilarity)
         {
             if (string.IsNullOrWhiteSpace(inputText))

@@ -7,7 +7,22 @@ WordsCloud is a .NET 9.0 console application designed to analyze text data and g
 The primary objective is to provide a robust engine for:
 - Splitting text into individual words.
 - Calculating word frequency (scores).
-- (Future) Grouping similar words based on **Levenshtein distance** to account for typos or variations.
+- Grouping similar words based on **Levenshtein distance** to account for typos or variations.
+
+## 🧠 Why Levenshtein? The "Spellchecker" vs. The "Philosopher"
+
+While modern AI models (LLMs) act as **Philosophers**, understanding the *meaning* (semantic similarity) of words—knowing that "Cat" and "Dog" are both pets—**WordsCloud** acts as a **Spellchecker**. 
+
+We prioritize **structural similarity**. Instead of asking what a word *means*, we ask how it is *built*. This allows the engine to recognize that "TIGER" and "TlGER" are likely the same word, even if an AI might get confused by the visual typo.
+
+### 🌍 Real-World Use Cases
+
+*   **Live Event Feedback**: Merging typos in live survey results (e.g., "Excelent" and "Excellent") to show a true consensus in word clouds.
+*   **OCR Data Cleaning**: Automatically repairing text from scanned documents where "l" (small L) is often mistaken for "I" (capital I).
+*   **Customer Record Matching**: Identifying duplicate entries in databases like "John Smith" and "Jon Smith".
+*   **Spam Filtering**: Catching "obfuscated" words designed to bypass simple filters (e.g., "M0ney" or "W4tch").
+*   **Bio-informatics**: Measuring mutation distances between DNA sequences represented as strings of characters.
+
 
 ## 🛠 Technology Stack
 
