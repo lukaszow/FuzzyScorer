@@ -9,7 +9,7 @@ To maintain perfect context and architectural consistency while saving LLM token
 > **Bootstrap Prompt:**
 > "Start session. I have created the configuration files (`AI_RULES.md`, `STRUCTURE.md`). Please analyze them first to understand the project architecture, tech stack.
 > 
-> Then, based on `STRUCTURE.md`, verify or maintain the directory tree."
+> Then, based on `STRUCTURE.md`, verify or maintain the directory tree. Let me know if you are ready to continue."
 
 ## Project Configuration Files
 
