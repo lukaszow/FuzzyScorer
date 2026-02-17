@@ -31,6 +31,23 @@ We prioritize **structural similarity**. Instead of asking what a word *means*, 
 - **Project Type**: Library
 - **Key Features**: LINQ for data processing, Null Safety (Nullable enable).
 
+## 🔒 Security & DoS Protection
+
+FuzzyScorer includes built-in safeguards to prevent denial-of-service attacks and ensure safe operation in server environments:
+
+- **Input Limits**:
+  - Maximum 10,000 words per text (`MaxWordsPerText`)
+  - Maximum word length of 256 characters (`MaxWordLength`)
+  - Similarity threshold capped at 50 (`MaxSimilarityThreshold`)
+  
+- **Input Normalization**: Removes non-alphanumeric characters (except spaces/hyphens) and invalid words before processing.
+
+- **Cancellation Support**: All scoring methods accept optional `CancellationToken` for graceful operation cancellation in async contexts.
+
+- **Immutable Objects**: `WordScore` objects are read-only after construction with validation.
+
+- **No Hardcoded Secrets**: Project contains no API keys, tokens, or sensitive data.
+
 ## 🏗 Architecture & Project Structure
 
 The project follows a strictly defined structure as documented in [STRUCTURE.md](STRUCTURE.md).
@@ -53,7 +70,9 @@ To execute the unit tests:
    ```
 
 ### Using the Scoring Logic
-You can use the `Scorer.GetScoringWords` static method to analyze text:
+
+#### Basic Word Frequency Scoring
+Analyze text and get word frequencies (case-insensitive):
 
 ```csharp
 string text = "Hello world hello again";
@@ -63,6 +82,61 @@ foreach (var result in results)
 {
     Console.WriteLine($"{result.Text}: {result.Score}");
 }
+// Output:
+// hello: 2
+// world: 1
+// again: 1
+```
+
+#### Fuzzy Matching with Levenshtein Distance
+Group similar words (e.g., handle typos) using a similarity threshold:
+
+```csharp
+string text = "Hello helo hallo world wor1d";
+int similarity = 1; // Allow up to 1 character difference
+var results = Scorer.GetScoringWords(text, similarity);
+
+foreach (var result in results)
+{
+    Console.WriteLine($"{result.Text}: {result.Score}");
+}
+// Output:
+// Hello: 3   (groups "Hello", "helo", "hallo")
+// world: 2   (groups "world", "wor1d")
+```
+
+#### With Cancellation Token (Async Operations)
+For long-running operations or server contexts, provide a `CancellationToken`:
+
+```csharp
+var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+string largeText = /* ... large input ... */;
+
+try
+{
+    var results = Scorer.GetScoringWords(largeText, cts.Token);
+    // Process results
+}
+catch (OperationCanceledException)
+{
+    Console.WriteLine("Operation was cancelled after 5 seconds.");
+}
+```
+
+#### Error Handling
+Input exceeding limits raises `ArgumentException`:
+
+```csharp
+try
+{
+    string hugeSizedText = string.Join(" ", Enumerable.Range(0, 20000).Select(i => $"word{i}"));
+    var results = Scorer.GetScoringWords(hugeSizedText);
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"Input validation failed: {ex.Message}");
+    // "Input contains 20000 words, exceeding limit of 10000"
+}
 ```
 
 ## 📜 Development Rules
@@ -71,3 +145,7 @@ All contributors (including AI agents) must follow the rules defined in `AI_RULE
 - **PascalCase** for methods and properties.
 - **camelCase** for local variables.
 - **XML Documentation** required for all public members.
+
+## 🔐 Security
+
+For detailed information on security features, threat model, and best practices, see [SECURITY.md](SECURITY.md).

@@ -7,13 +7,14 @@ This file documents the project structure and architectural patterns for the `Fu
 ```text
 FuzzyScorer/
 ├── AI_RULES.md                # Project-specific AI guidelines and standards
+├── DEVELOPMENT.md             # Development notes and AI guidelines
 ├── STRUCTURE.md               # This file
+├── README.md                  # Project documentation
 ├── FuzzyScorer.sln             # Visual Studio Solution file
 ├── FuzzyScorer/                # Main project directory
 │   ├── FuzzyScorer.csproj      # .NET 9.0 project file
-│   ├── App.config             # Application configuration
-│   ├── Scorer.cs              # Core scoring logic
-│   ├── WordScore.cs           # Data model for word analysis
+│   ├── Scorer.cs              # Core scoring logic with security safeguards
+│   ├── WordScore.cs           # Data model for word analysis (immutable)
 │   └── Properties/            # Project assembly information
 └── FuzzyScorer.Tests/          # Unit test project (xUnit)
     ├── FuzzyScorer.Tests.csproj
@@ -40,3 +41,28 @@ FuzzyScorer/
 - Targeted for **.NET 9.0**.
 - Uses **C# 13** features.
 - Nullability is enabled; follow strict null safety.
+
+## Security-Related Changes (v1.1+)
+
+### Input Limits and Validation
+The `Scorer` class now enforces security limits to prevent DoS attacks:
+- **MaxWordsPerText**: 10,000 words max
+- **MaxWordLength**: 256 characters per word
+- **MaxSimilarityThreshold**: 50 for Levenshtein distance
+
+### Normalization
+Input text is automatically normalized via `NormalizeAndExtractWords()` method:
+- Removes non-alphanumeric characters (preserves letters, digits, hyphens, spaces)
+- Trims and validates individual words
+- Throws `ArgumentException` if limits are exceeded
+
+### Cancellation Support
+All public `GetScoringWords` methods now support `CancellationToken` parameter for controlled operation cancellation in long-running scenarios.
+
+### Immutable WordScore
+`WordScore` class properties are read-only after construction with parameter validation:
+- `Text` cannot be null
+- `Score` cannot be negative
+
+### Removed Files
+- **App.config**: Obsolete .NET Framework configuration file (project targets .NET 9.0)
