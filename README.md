@@ -36,9 +36,10 @@ We prioritize **structural similarity**. Instead of asking what a word *means*, 
 FuzzyScorer includes built-in safeguards to prevent denial-of-service attacks and ensure safe operation in server environments:
 
 - **Input Limits**:
-  - Maximum 10,000 words per text (`MaxWordsPerText`)
-  - Maximum word length of 256 characters (`MaxWordLength`)
-  - Similarity threshold capped at 50 (`MaxSimilarityThreshold`)
+  - Maximum raw input size of 1,000,000 characters (`MaxInputLength`) — enforced before any processing
+  - Maximum 10,000 words per text (`MaxWordsPerText`) — enforced after splitting
+  - Maximum word length of 256 characters (`MaxWordLength`) — longer tokens are silently dropped
+  - Similarity threshold capped at 50 (`MaxSimilarityThreshold`) — prevents O(n²) Levenshtein blowup
   
 - **Input Normalization**: Removes non-alphanumeric characters (except spaces/hyphens) and invalid words before processing.
 
@@ -124,18 +125,42 @@ catch (OperationCanceledException)
 ```
 
 #### Error Handling
-Input exceeding limits raises `ArgumentException`:
+Input exceeding any limit raises `ArgumentException`:
 
 ```csharp
+// Too many characters (> 1,000,000)
 try
 {
-    string hugeSizedText = string.Join(" ", Enumerable.Range(0, 20000).Select(i => $"word{i}"));
-    var results = Scorer.GetScoringWords(hugeSizedText);
+    string hugeText = new string('a', 2_000_000);
+    var results = Scorer.GetScoringWords(hugeText);
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"Input validation failed: {ex.Message}");
+    // "Input exceeds maximum length of 1000000 characters"
+}
+
+// Too many words (> 10,000)
+try
+{
+    string manyWords = string.Join(" ", Enumerable.Range(0, 20000).Select(i => $"word{i}"));
+    var results = Scorer.GetScoringWords(manyWords);
 }
 catch (ArgumentException ex)
 {
     Console.WriteLine($"Input validation failed: {ex.Message}");
     // "Input contains 20000 words, exceeding limit of 10000"
+}
+
+// Similarity threshold out of range (> 50)
+try
+{
+    var results = Scorer.GetScoringWords("hello world", targetSimilarity: 99);
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"Input validation failed: {ex.Message}");
+    // "targetSimilarity must be between 0 and 50"
 }
 ```
 
