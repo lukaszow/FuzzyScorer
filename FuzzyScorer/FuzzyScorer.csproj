@@ -7,8 +7,5 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ModelContextProtocol.NET.Server" Version="0.3.3-alpha" />
-  </ItemGroup>
 
 </Project>

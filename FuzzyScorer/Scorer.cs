@@ -13,9 +13,12 @@ namespace FuzzyScorer
     public class Scorer
     {
         // Security limits to prevent DoS attacks
+        private const int MaxInputLength = 1_000_000;
         private const int MaxWordsPerText = 10_000;
         private const int MaxWordLength = 256;
         private const int MaxSimilarityThreshold = 50;
+
+        private static readonly Regex WordNormalizationRegex = new Regex(@"[^\p{L}\p{N}\s-]", RegexOptions.Compiled);
         /// <summary>
         /// Analyzes the provided text by breaking it down into individual words and counting how many times each word appears.
         /// It ignores whether a word is written in UPPERCASE or lowercase (e.g., "Apple" and "apple" are treated as the same word).
@@ -172,8 +175,12 @@ namespace FuzzyScorer
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Guard against oversized input before any processing
+            if (inputText.Length > MaxInputLength)
+                throw new ArgumentException($"Input exceeds maximum length of {MaxInputLength} characters", nameof(inputText));
+
             // Remove non-alphanumeric characters except spaces (basic punctuation normalization)
-            var normalized = Regex.Replace(inputText, @"[^\p{L}\p{N}\s-]", "", RegexOptions.Compiled);
+            var normalized = WordNormalizationRegex.Replace(inputText, "");
 
             // Split and filter
             var words = normalized
