@@ -1,6 +1,6 @@
 # FuzzyScorer
 
-FuzzyScorer is a .NET 9.0 class library designed to analyze text data and generate word scoring results. These results are intended to be used for creating word clouds, where the "score" typically represents the frequency of a word in a given text.
+FuzzyScorer is a .NET 10.0 class library designed to analyze text data and generate word scoring results. These results are intended to be used for creating word clouds, where the "score" typically represents the frequency of a word in a given text.
 
 ## 🎯 Project Goal
 
@@ -26,7 +26,7 @@ We prioritize **structural similarity**. Instead of asking what a word *means*, 
 
 ## 🛠 Technology Stack
 
-- **Platform**: .NET 9.0
+- **Platform**: .NET 10.0
 - **Language**: C# 13
 - **Project Type**: Library
 - **Key Features**: LINQ for data processing, Null Safety (Nullable enable).
@@ -60,7 +60,7 @@ The project follows a strictly defined structure as documented in [STRUCTURE.md]
 ## 🚀 How to Use
 
 ### Prerequisites
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 
 ### Running Tests
 To execute the unit tests:
