@@ -60,7 +60,7 @@ The project follows a strictly defined structure as documented in [STRUCTURE.md]
 ## 🚀 How to Use
 
 ### Prerequisites
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 ### Running Tests
 To execute the unit tests:
