@@ -39,7 +39,7 @@ FuzzyScorer includes built-in safeguards to prevent denial-of-service attacks an
   - Maximum raw input size of 1,000,000 characters (`MaxInputLength`) — enforced before any processing
   - Maximum 10,000 words per text (`MaxWordsPerText`) — enforced after splitting
   - Maximum word length of 256 characters (`MaxWordLength`) — longer tokens are silently dropped
-  - Similarity threshold capped at 50 (`MaxSimilarityThreshold`) — prevents O(n²) Levenshtein blowup
+  - Similarity threshold capped at 50 (`MaxEditDistanceLimit`) — prevents O(n²) Levenshtein blowup
   
 - **Input Normalization**: Removes non-alphanumeric characters (except spaces/hyphens) and invalid words before processing.
 
@@ -53,7 +53,7 @@ FuzzyScorer includes built-in safeguards to prevent denial-of-service attacks an
 
 The project follows a strictly defined structure as documented in [STRUCTURE.md](STRUCTURE.md).
 
-- **Scorer.cs**: Contains the core word scoring and similarity logic.
+- **WordScorer.cs**: Contains the core word frequency and similarity grouping logic.
 - **WordScore.cs**: A POCO (Plain Old CLR Object) representing a word and its associated score.
 - **AI_RULES.md**: Contains specific coding standards and AI-specific guidelines for this project.
 
@@ -77,7 +77,7 @@ Analyze text and get word frequencies (case-insensitive):
 
 ```csharp
 string text = "Hello world hello again";
-var results = Scorer.GetScoringWords(text);
+var results = WordScorer.GetWordFrequencies(text);
 
 foreach (var result in results)
 {
@@ -94,8 +94,8 @@ Group similar words (e.g., handle typos) using a similarity threshold:
 
 ```csharp
 string text = "Hello helo hallo world wor1d";
-int similarity = 1; // Allow up to 1 character difference
-var results = Scorer.GetScoringWords(text, similarity);
+int maxEditDistance = 1; // Allow up to 1 character difference
+var results = WordScorer.GroupSimilarWords(text, maxEditDistance);
 
 foreach (var result in results)
 {
@@ -115,7 +115,7 @@ string largeText = /* ... large input ... */;
 
 try
 {
-    var results = Scorer.GetScoringWords(largeText, cts.Token);
+    var results = WordScorer.GetWordFrequencies(largeText, cts.Token);
     // Process results
 }
 catch (OperationCanceledException)
@@ -132,7 +132,7 @@ Input exceeding any limit raises `ArgumentException`:
 try
 {
     string hugeText = new string('a', 2_000_000);
-    var results = Scorer.GetScoringWords(hugeText);
+    var results = WordScorer.GetWordFrequencies(hugeText);
 }
 catch (ArgumentException ex)
 {
@@ -144,7 +144,7 @@ catch (ArgumentException ex)
 try
 {
     string manyWords = string.Join(" ", Enumerable.Range(0, 20000).Select(i => $"word{i}"));
-    var results = Scorer.GetScoringWords(manyWords);
+    var results = WordScorer.GetWordFrequencies(manyWords);
 }
 catch (ArgumentException ex)
 {
@@ -152,15 +152,15 @@ catch (ArgumentException ex)
     // "Input contains 20000 words, exceeding limit of 10000"
 }
 
-// Similarity threshold out of range (> 50)
+// Max edit distance out of range (> 50)
 try
 {
-    var results = Scorer.GetScoringWords("hello world", targetSimilarity: 99);
+    var results = WordScorer.GroupSimilarWords("hello world", maxEditDistance: 99);
 }
 catch (ArgumentException ex)
 {
     Console.WriteLine($"Input validation failed: {ex.Message}");
-    // "targetSimilarity must be between 0 and 50"
+    // "maxEditDistance must be between 0 and 50"
 }
 ```
 
