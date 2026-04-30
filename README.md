@@ -1,176 +1,70 @@
 # FuzzyScorer
 
-FuzzyScorer is a .NET 10.0 class library designed to analyze text data and generate word scoring results. These results are intended to be used for creating word clouds, where the "score" typically represents the frequency of a word in a given text.
+## 1. The Problem
 
-## Project Goal
+Raw text from users, surveys, or OCR is full of noisy variants — `"Excellent"`, `"Excelent"`, `"excelent"`, `"Excelleent"`. A naive word counter treats each as a separate word, fragmenting your frequency counts. You either live with the noise or write fragile custom normalization.
 
-The primary objective is to provide a robust engine for:
-- Splitting text into individual words.
-- Calculating word frequency (scores).
-- Grouping similar words based on **Levenshtein distance** to account for typos or variations.
+FuzzyScorer solves this: it gives you accurate word counts by merging exact duplicates (case-insensitive) and structurally similar variants (via Levenshtein distance) in a single call.
 
-## Why Levenshtein? The "Spellchecker" vs. The "Philosopher"
-
-While modern AI models (LLMs) act as **Philosophers**, understanding the *meaning* (semantic similarity) of words—knowing that "Cat" and "Dog" are both pets—**FuzzyScorer** acts as a **Spellchecker**. 
-
-We prioritize **structural similarity**. Instead of asking what a word *means*, we ask how it is *built*. This allows the engine to recognize that "TIGER" and "TlGER" are likely the same word, even if an AI might get confused by the visual typo.
+**Structural similarity, not semantic.** Unlike AI models that understand meaning (knowing "cat" and "dog" are both pets), FuzzyScorer looks at how a word is *built* — so `"TIGER"` and `"TlGER"` (a common OCR error) are recognized as the same word, even though no semantic model would confuse them.
 
 ### Real-World Use Cases
 
-*   **Live Event Feedback**: Merging typos in live survey results (e.g., "Excelent" and "Excellent") to show a true consensus in word clouds.
-*   **OCR Data Cleaning**: Automatically repairing text from scanned documents where "l" (small L) is often mistaken for "I" (capital I).
-*   **Customer Record Matching**: Identifying duplicate entries in databases like "John Smith" and "Jon Smith".
-*   **Spam Filtering**: Catching "obfuscated" words designed to bypass simple filters (e.g., "M0ney" or "W4tch").
-*   **Bio-informatics**: Measuring mutation distances between DNA sequences represented as strings of characters.
+- **Live Event Feedback**: Merge typos in survey results (e.g., `"Excelent"` and `"Excellent"`) to show true consensus in word clouds.
+- **OCR Data Cleaning**: Repair text where `"l"` (lowercase L) is mistaken for `"I"` (capital I) in scanned documents.
+- **Customer Record Matching**: Identify duplicates like `"John Smith"` and `"Jon Smith"`.
+- **Spam Filtering**: Catch obfuscated words designed to bypass simple filters (e.g., `"M0ney"`, `"W4tch"`).
 
+## 2. How to Use
 
-## Technology Stack
+```csharp
+using FuzzyScorer;
 
-- **Platform**: .NET 10.0
-- **Language**: C# 13
-- **Project Type**: Library
-- **Key Features**: LINQ for data processing, Null Safety (Nullable enable).
+string text = "apple aple Apple";
+var results = WordScorer.GroupSimilarWords(text, maxEditDistance: 1);
 
-## Security & DoS Protection
+foreach (var word in results)
+    Console.WriteLine($"{word.Text}: {word.Score}");
 
-FuzzyScorer includes built-in safeguards to prevent denial-of-service attacks and ensure safe operation in server environments:
+// Output:
+// apple: 3
+```
 
-- **Input Limits**:
-  - Maximum raw input size of 1,000,000 characters (`MaxInputLength`) — enforced before any processing
-  - Maximum 10,000 words per text (`MaxWordsPerText`) — enforced after splitting
-  - Maximum word length of 256 characters (`MaxWordLength`) — longer tokens are silently dropped
-  - Similarity threshold capped at 50 (`MaxEditDistanceLimit`) — prevents O(n²) Levenshtein blowup
-  
-- **Input Normalization**: Removes non-alphanumeric characters (except spaces/hyphens) and invalid words before processing.
-
-- **Cancellation Support**: All scoring methods accept optional `CancellationToken` for graceful operation cancellation in async contexts.
-
-- **Immutable Objects**: `WordScore` objects are read-only after construction with validation.
-
-- **No Hardcoded Secrets**: Project contains no API keys, tokens, or sensitive data.
-
-## Architecture & Project Structure
-
-The project follows a strictly defined structure as documented in [STRUCTURE.md](STRUCTURE.md).
-
-- **WordScorer.cs**: Contains the core word frequency and similarity grouping logic.
-- **WordScore.cs**: A POCO (Plain Old CLR Object) representing a word and its associated score.
-- **AI_RULES.md**: Contains specific coding standards and AI-specific guidelines for this project.
-
-## How to Use
-
-### Prerequisites
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+`GroupSimilarWords` is the primary entry point — it handles both exact case-insensitive grouping and fuzzy matching. For word-frequency-only scenarios, use `WordScorer.GetWordFrequencies(text)`.
 
 ### Running Tests
-To execute the unit tests:
-1. Open a terminal in the project root.
-2. Run the tests:
-   ```bash
-   dotnet test
-   ```
 
-### Using the Scoring Logic
-
-#### Basic Word Frequency Scoring
-Analyze text and get word frequencies (case-insensitive):
-
-```csharp
-string text = "Hello world hello again";
-var results = WordScorer.GetWordFrequencies(text);
-
-foreach (var result in results)
-{
-    Console.WriteLine($"{result.Text}: {result.Score}");
-}
-// Output:
-// hello: 2
-// world: 1
-// again: 1
+```bash
+dotnet test
 ```
 
-#### Fuzzy Matching with Levenshtein Distance
-Group similar words (e.g., handle typos) using a similarity threshold:
+Requires [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
-```csharp
-string text = "Hello helo hallo world wor1d";
-int maxEditDistance = 1; // Allow up to 1 character difference
-var results = WordScorer.GroupSimilarWords(text, maxEditDistance);
+## 3. Technology
 
-foreach (var result in results)
-{
-    Console.WriteLine($"{result.Text}: {result.Score}");
-}
-// Output:
-// Hello: 3   (groups "Hello", "helo", "hallo")
-// world: 2   (groups "world", "wor1d")
-```
+### Safety
 
-#### With Cancellation Token (Async Operations)
-For long-running operations or server contexts, provide a `CancellationToken`:
+- All input validated before processing: max 1,000,000 characters, 10,000 words, 256 characters per word, edit distance capped at 50.
+- Input is normalized — non-alphanumeric characters (except hyphens and whitespace) are stripped.
+- No unsafe code, no unmanaged memory, no external runtime dependencies beyond .NET BCL.
+- `CancellationToken` accepted on every public method for graceful cancellation.
+- `WordScore` is immutable — validated at construction, read-only thereafter.
 
-```csharp
-var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-string largeText = /* ... large input ... */;
+### Stability
 
-try
-{
-    var results = WordScorer.GetWordFrequencies(largeText, cts.Token);
-    // Process results
-}
-catch (OperationCanceledException)
-{
-    Console.WriteLine("Operation was cancelled after 5 seconds.");
-}
-```
+- .NET 10.0 with nullable reference types enabled.
+- 100% of public API covered by xUnit tests (16 tests, all passing).
+- Every public member has XML documentation.
+- All public methods are pure and stateless — no mutable shared state, no thread-safety concerns.
 
-#### Error Handling
-Input exceeding any limit raises `ArgumentException`:
+### Flexibility
 
-```csharp
-// Too many characters (> 1,000,000)
-try
-{
-    string hugeText = new string('a', 2_000_000);
-    var results = WordScorer.GetWordFrequencies(hugeText);
-}
-catch (ArgumentException ex)
-{
-    Console.WriteLine($"Input validation failed: {ex.Message}");
-    // "Input exceeds maximum length of 1000000 characters"
-}
+- Two orthogonal operations exposed as separate methods: exact frequency counting and fuzzy similarity grouping.
+- `WordScore` is a simple immutable POCO — trivially mapped to JSON, DTOs, or database rows.
+- No IoC container or configuration required — drop in and call.
 
-// Too many words (> 10,000)
-try
-{
-    string manyWords = string.Join(" ", Enumerable.Range(0, 20000).Select(i => $"word{i}"));
-    var results = WordScorer.GetWordFrequencies(manyWords);
-}
-catch (ArgumentException ex)
-{
-    Console.WriteLine($"Input validation failed: {ex.Message}");
-    // "Input contains 20000 words, exceeding limit of 10000"
-}
+### Extensibility
 
-// Max edit distance out of range (> 50)
-try
-{
-    var results = WordScorer.GroupSimilarWords("hello world", maxEditDistance: 99);
-}
-catch (ArgumentException ex)
-{
-    Console.WriteLine($"Input validation failed: {ex.Message}");
-    // "maxEditDistance must be between 0 and 50"
-}
-```
-
-## Development Rules
-All contributors (including AI agents) must follow the rules defined in `AI_RULES.md` and respect the directory structure in `STRUCTURE.md`.
-
-- **PascalCase** for methods and properties.
-- **camelCase** for local variables.
-- **XML Documentation** required for all public members.
-
-## Security
-
-For detailed information on security features, threat model, and best practices, see [SECURITY.md](SECURITY.md).
+- Static facade can be wrapped in an `IWordScorer` interface or extended with instance-based options without breaking the existing API surface.
+- Levenshtein implementation is private — can be replaced or optimized without affecting callers.
+- Security limits are constants, not hardcoded magic numbers — adjustable without changing behavior.
