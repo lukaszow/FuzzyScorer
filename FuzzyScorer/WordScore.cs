@@ -25,7 +25,7 @@ namespace FuzzyScorer
         public WordScore(string text, int score)
         {
             if (text == null)
-                throw new ArgumentNullException(nameof(text));
+                throw new ArgumentException("Text cannot be null.", nameof(text));
             if (score < 0)
                 throw new ArgumentException("Score cannot be negative.", nameof(score));
 
