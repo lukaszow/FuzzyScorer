@@ -14,18 +14,18 @@ All input text is validated to prevent denial-of-service attacks:
 |-------|-------|-----------|
 | **MaxWordsPerText** | 10,000 | Prevents memory exhaustion from oversized inputs |
 | **MaxWordLength** | 256 characters | Limits processing overhead per word |
-| **MaxSimilarityThreshold** | 50 | Prevents quadratic complexity in grouping algorithm |
+| **MaxEditDistanceLimit** | 50 | Prevents quadratic complexity in grouping algorithm |
 
 **Behavior**: Input exceeding limits raises `ArgumentException` with descriptive message.
 
 ```csharp
 // ✅ Valid
-Scorer.GetScoringWords("small text");                    // OK
-Scorer.GetScoringWords(text, similarity: 10);            // OK (≤ 50)
+WordScorer.GetWordFrequencies("small text");                    // OK
+WordScorer.GroupSimilarWords(text, maxEditDistance: 10);        // OK (≤ 50)
 
 // ❌ Invalid
-Scorer.GetScoringWords(hugeText);                        // ArgumentException: exceeds 10,000 words
-Scorer.GetScoringWords(text, similarity: 100);           // ArgumentException: must be ≤ 50
+WordScorer.GetWordFrequencies(hugeText);                        // ArgumentException: exceeds 10,000 words
+WordScorer.GroupSimilarWords(text, maxEditDistance: 100);       // ArgumentException: must be ≤ 50
 ```
 
 ### Input Normalization
@@ -69,14 +69,11 @@ Console.WriteLine(score.Score);  // 5
 All scoring methods accept `CancellationToken` for controlled resource management:
 
 ```csharp
-var cts = new CancellationTokenSource();
-
-// Cancel operation after 5 seconds
-cts.CancelAfter(TimeSpan.FromSeconds(5));
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
 try
 {
-    var results = Scorer.GetScoringWords(largeText, 1, cts.Token);
+    var results = WordScorer.GroupSimilarWords(largeText, 1, cts.Token);
 }
 catch (OperationCanceledException)
 {
@@ -149,20 +146,18 @@ No automatic detection in NuGet; recommend SBOM tools:
 // 1. With default limits (best for web services)
 try
 {
-    var results = Scorer.GetScoringWords(userInput);
+    var results = WordScorer.GetWordFrequencies(userInput);
 }
 catch (ArgumentException ex)
 {
-    // Log and return error to user
     _logger.LogWarning($"Invalid input: {ex.Message}");
-    return BadRequest(ex.Message);
 }
 
 // 2. With cancellation (async contexts)
-var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 try
 {
-    var results = Scorer.GetScoringWords(textData, 1, cts.Token);
+    var results = WordScorer.GroupSimilarWords(textData, 1, cts.Token);
 }
 catch (OperationCanceledException)
 {
@@ -178,13 +173,13 @@ WordScore score = new WordScore("word", 5);
 
 ```csharp
 // DON'T: Ignore validation exceptions
-var results = Scorer.GetScoringWords(untrustedData); // Can throw!
+var results = WordScorer.GetWordFrequencies(untrustedData); // Can throw!
 
-// DON'T: Pass unbounded similarity threshold
-var results = Scorer.GetScoringWords(text, 10_000); // Use ≤ 50
+// DON'T: Pass unbounded edit distance
+var results = WordScorer.GroupSimilarWords(text, maxEditDistance: 10_000); // Use ≤ 50
 
 // DON'T: No cancellation support in long operations
-var results = Scorer.GetScoringWords(hugeFile); // Can hang indefinitely
+var results = WordScorer.GetWordFrequencies(hugeFile); // Can hang indefinitely
 ```
 
 ## Security Audit Checklist

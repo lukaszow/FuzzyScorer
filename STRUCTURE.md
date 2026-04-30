@@ -7,13 +7,13 @@ This file documents the project structure and architectural patterns for the `Fu
 ```text
 FuzzyScorer/
 ├── AI_RULES.md                # Project-specific AI guidelines and standards
-├── DEVELOPMENT.md             # Development notes and AI guidelines
+├── AGENTS.md                  # AI agent development guide
 ├── STRUCTURE.md               # This file
 ├── README.md                  # Project documentation
 ├── FuzzyScorer.sln             # Visual Studio Solution file
 ├── FuzzyScorer/                # Main project directory
-│   ├── FuzzyScorer.csproj      # .NET 9.0 project file
-│   ├── Scorer.cs              # Core scoring logic with security safeguards
+│   ├── FuzzyScorer.csproj      # .NET 10.0 project file
+│   ├── WordScorer.cs          # Core word frequency and similarity logic
 │   ├── WordScore.cs           # Data model for word analysis (immutable)
 │   └── Properties/            # Project assembly information
 └── FuzzyScorer.Tests/          # Unit test project (xUnit)
@@ -31,24 +31,24 @@ FuzzyScorer/
 ### 2. Implementation Pattern
 - **Current State**: A library providing word frequency and similarity scoring.
 - **Data Models**: Use simple POCOs like `WordScore` for data representation.
-- **Methods**: Core logic (like word scoring) is currently implemented as static methods in `Program`. In future refactoring, these should be moved to dedicated service classes.
+- **Methods**: Core logic is implemented as static methods on `WordScorer`. Future refactoring could extract `IWordScorer` for testability.
 
 ### 3. Namespace Convention
 - Use the base namespace `FuzzyScorer` for all files within the main project directory.
 - Subdirectories should correspond to sub-namespaces (e.g., `FuzzyScorer.Models`).
 
 ### 4. Technical Stack
-- Targeted for **.NET 9.0**.
+- Targeted for **.NET 10.0**.
 - Uses **C# 13** features.
 - Nullability is enabled; follow strict null safety.
 
-## Security-Related Changes (v1.1+)
+## Security-Related Features
 
 ### Input Limits and Validation
-The `Scorer` class now enforces security limits to prevent DoS attacks:
+The `WordScorer` class enforces security limits to prevent DoS attacks:
 - **MaxWordsPerText**: 10,000 words max
 - **MaxWordLength**: 256 characters per word
-- **MaxSimilarityThreshold**: 50 for Levenshtein distance
+- **MaxEditDistanceLimit**: 50 for Levenshtein distance
 
 ### Normalization
 Input text is automatically normalized via `NormalizeAndExtractWords()` method:
@@ -57,12 +57,9 @@ Input text is automatically normalized via `NormalizeAndExtractWords()` method:
 - Throws `ArgumentException` if limits are exceeded
 
 ### Cancellation Support
-All public `GetScoringWords` methods now support `CancellationToken` parameter for controlled operation cancellation in long-running scenarios.
+All public methods accept `CancellationToken` for controlled operation cancellation in long-running scenarios.
 
 ### Immutable WordScore
 `WordScore` class properties are read-only after construction with parameter validation:
 - `Text` cannot be null
 - `Score` cannot be negative
-
-### Removed Files
-- **App.config**: Obsolete .NET Framework configuration file (project targets .NET 9.0)
