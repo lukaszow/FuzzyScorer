@@ -17,6 +17,16 @@ FuzzyScorer solves this: it gives you accurate word counts by merging exact dupl
 
 ## 2. How to Use
 
+### Installation
+
+```bash
+dotnet add package FuzzyScorer --version 1.0.0
+```
+
+The package includes XML documentation files for full IntelliSense support.
+
+### Usage
+
 ```csharp
 using FuzzyScorer;
 

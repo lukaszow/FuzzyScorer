@@ -15,7 +15,7 @@ To maintain perfect context and architectural consistency while saving LLM token
 
 The following files define the core project governance:
 
-1.  **[AI_RULES.md](AI_RULES.md)**: Defines the tech stack (.NET 9.0, C# 13, Console Application), coding standards, and language rules.
+1.  **[AI_RULES.md](AI_RULES.md)**: Defines the tech stack (.NET 10.0, C# 13, Library), coding standards, and language rules.
 2.  **[STRUCTURE.md](STRUCTURE.md)**: Defines the strict directory hierarchy and data flow (Processing -> State -> Display).
 3.  **[SECURITY.md](SECURITY.md)**: Security policy, threat model, usage guidelines, and audit checklist.
 
@@ -57,7 +57,7 @@ Simply mentioning or pasting the bootstrap prompt ensures the agent is fully ali
 
 5. **Cleanup**
    - Removed obsolete `App.config` (targeted outdated .NET Framework 4.6.1)
-   - Project now strictly targets .NET 9.0
+    - Project now strictly targets .NET 10.0
 
 **Testing:**
 - All 6 existing unit tests pass without modification
