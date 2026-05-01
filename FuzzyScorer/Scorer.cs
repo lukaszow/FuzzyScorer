@@ -11,11 +11,17 @@ namespace FuzzyScorer
     /// </summary>
     public class WordScorer
     {
-        // Security limits to prevent DoS attacks
-        private const int MaxInputLength = 1_000_000;
-        private const int MaxWordsPerText = 10_000;
-        private const int MaxWordLength = 256;
-        private const int MaxEditDistanceLimit = 50;
+        /// <summary>Maximum allowed input length in characters (1,000,000).</summary>
+        public const int MaxInputLength = 1_000_000;
+
+        /// <summary>Maximum allowed words per text input (10,000).</summary>
+        public const int MaxWordsPerText = 10_000;
+
+        /// <summary>Maximum allowed length of a single word in characters (256).</summary>
+        public const int MaxWordLength = 256;
+
+        /// <summary>Maximum allowed Levenshtein edit distance (50).</summary>
+        public const int MaxEditDistanceLimit = 50;
 
         private static readonly Regex WordNormalizationRegex = new Regex(@"[^\p{L}\p{N}\s-]", RegexOptions.Compiled);
 

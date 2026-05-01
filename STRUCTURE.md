@@ -10,10 +10,15 @@ FuzzyScorer/
 ├── AGENTS.md                  # AI agent development guide
 ├── STRUCTURE.md               # This file
 ├── README.md                  # Project documentation
+├── SECURITY.md                # Security policy and threat model
+├── DEVELOPMENT.md             # Development notes and guidelines
+├── nuget.config               # Local NuGet source configuration
+├── pack.ps1                   # Script to build and pack NuGet package
 ├── FuzzyScorer.sln             # Visual Studio Solution file
+├── nupkgs/                    # Output directory for built .nupkg files
 ├── FuzzyScorer/                # Main project directory
 │   ├── FuzzyScorer.csproj      # .NET 10.0 project file
-│   ├── WordScorer.cs          # Core word frequency and similarity logic
+│   ├── Scorer.cs              # Core word frequency and similarity logic
 │   ├── WordScore.cs           # Data model for word analysis (immutable)
 │   └── Properties/            # Project assembly information
 └── FuzzyScorer.Tests/          # Unit test project (xUnit)

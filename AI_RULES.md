@@ -3,7 +3,7 @@
 This document defines the coding standards, architectural patterns, and rules for AI contributions to the `FuzzyScorer` project.
 
 ## Tech Stack
-- **Core**: .NET 9.0
+- **Core**: .NET 10.0
 - **Language**: C# 13
 - **Project Type**: Library
 
