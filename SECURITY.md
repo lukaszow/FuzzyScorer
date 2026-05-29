@@ -73,7 +73,12 @@ using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
 try
 {
+    // Static API
     var results = WordScorer.GroupSimilarWords(largeText, 1, cts.Token);
+
+    // Instance API
+    IFuzzyScorer scorer = new FuzzyScorer();
+    var result = await scorer.ScoreAsync(largeText, 0.02, cts.Token);
 }
 catch (OperationCanceledException)
 {

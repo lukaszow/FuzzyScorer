@@ -31,47 +31,34 @@ Simply mentioning or pasting the bootstrap prompt ensures the agent is fully ali
 
 ## 🔒 Security & Changelog
 
-### Version 1.1 - Security Hardening (2026-02-17)
+### Version 1.2 - Async API & Error Detection (2026-05-29)
 
-**Implemented Security Improvements:**
+**Implemented Features:**
 
-1. **DoS Prevention**
-   - Input limits: `MaxWordsPerText = 10,000`, `MaxWordLength = 256 characters`
-   - Similarity threshold validation: `MaxSimilarityThreshold = 50`
-   - Automatic validation on text entry with clear `ArgumentException` messages
+1. **New Instance API (`IFuzzyScorer`)**
+   - `FuzzyScorer : IFuzzyScorer` with `Task<FuzzyScorerResult> ScoreAsync(string, double, CancellationToken)`
+   - Supports DI and mocking via interface
 
-2. **Cancellation Support**
-   - All `Scorer.GetScoringWords()` methods now accept `CancellationToken` parameter
-   - Prevents indefinite hangs in async/server contexts
-   - Backwards compatible: existing code continues to work (uses `CancellationToken.None` default)
+2. **Error Detection**
+   - `FuzzyScorerResult` with `OriginalSize`, `CompressedSize`, `Errors`
+   - `ErrorEntry` captures potential typos: `ErrorText`, `RepetitionCount`, `LineNumbers`
+   - Sensitivity (0.0–1.0) maps linearly to Levenshtein edit distance
 
-3. **Input Normalization**
-   - Removed interpunctuation and non-alphanumeric noise via regex normalization
-   - Consistent whitespace handling across platforms (handles `\t`, `\n`, `\r`)
-   - Uses `ToLowerInvariant()` instead of `ToLower()` for culture-safe operations
+3. **Line Tracking**
+   - `ErrorEntry.LineNumbers` provides 1-based line numbers for each detected typo
 
-4. **Immutable WordScore Objects**
-   - Changed `Text` and `Score` properties from settable to read-only
-   - Added constructor input validation (null check, non-negative score)
-   - Prevents accidental/malicious object mutation after creation
-
-5. **Cleanup**
-   - Removed obsolete `App.config` (targeted outdated .NET Framework 4.6.1)
-    - Project now strictly targets .NET 10.0
+4. **Internal Refactoring**
+   - Extracted `BuildSimilarityGroups()` for reuse between `GroupSimilarWords` and `GetWordGroups`
+   - Exposed `WordNormalizationRegex` and `GetWordGroups` as `internal` for `FuzzyScorer`
 
 **Testing:**
-- All 6 existing unit tests pass without modification
-- Zero breaking changes to public API (overloads added, originals remain)
+- All 26 unit tests pass (16 existing + 10 new)
 - Build: Clean (0 warnings, 0 errors)
 
 **Migration Guide for Existing Code:**
-No action required for existing consumers—all changes are backwards compatible.
-To use new features (cancellation), simply pass `CancellationToken`:
+No action required for existing consumers—all `WordScorer` static methods remain unchanged.
+To use the new async API:
 ```csharp
-// Old code (still works)
-var results = Scorer.GetScoringWords(text);
-
-// New code with cancellation
-var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-var results = Scorer.GetScoringWords(text, 1, cts.Token);
+IFuzzyScorer scorer = new FuzzyScorer();
+var result = await scorer.ScoreAsync(inputText, sensitivity: 0.02, CancellationToken.None);
 ```

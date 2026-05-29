@@ -30,7 +30,7 @@ This document defines the coding standards, architectural patterns, and rules fo
 
 ### Word Scoring
 - The primary goal is to analyze text and produce a set of unique words with frequency-based scores.
-- Future implementations will include a similarity-based scoring system using the **Levenshtein distance** algorithm.
+- Similarity-based scoring via **Levenshtein distance** is implemented in both the static `WordScorer` API and the instance `IFuzzyScorer` API.
 
 ### Resource Management
 - Ensure all `IDisposable` resources are properly handled with `using` statements or declarations.
