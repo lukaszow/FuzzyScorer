@@ -20,6 +20,10 @@ FuzzyScorer/
 │   ├── FuzzyScorer.csproj      # .NET 10.0 project file
 │   ├── Scorer.cs              # Core word frequency and similarity logic
 │   ├── WordScore.cs           # Data model for word analysis (immutable)
+│   ├── IFuzzyScorer.cs        # Interface for async fuzzy scoring
+│   ├── FuzzyScorer.cs         # Instance implementation of IFuzzyScorer
+│   ├── FuzzyScorerResult.cs   # Result model (sizes + error list)
+│   ├── ErrorEntry.cs          # Error entry model (text, count, lines)
 │   └── Properties/            # Project assembly information
 └── FuzzyScorer.Tests/          # Unit test project (xUnit)
     ├── FuzzyScorer.Tests.csproj
@@ -34,9 +38,9 @@ FuzzyScorer/
 - If the project grows, follow standard .NET conventions (e.g., `Services/`, `Models/`, `Interfaces/`) within the `FuzzyScorer/` directory.
 
 ### 2. Implementation Pattern
-- **Current State**: A library providing word frequency and similarity scoring.
-- **Data Models**: Use simple POCOs like `WordScore` for data representation.
-- **Methods**: Core logic is implemented as static methods on `WordScorer`. Future refactoring could extract `IWordScorer` for testability.
+- **Current State**: A library providing word frequency analysis, fuzzy similarity grouping, and async error detection.
+- **Data Models**: Use simple immutable POCOs like `WordScore`, `FuzzyScorerResult`, and `ErrorEntry`.
+- **Methods**: Static API on `WordScorer` for basic operations; instance API via `IFuzzyScorer` for async analysis with typo detection and DI support.
 
 ### 3. Namespace Convention
 - Use the base namespace `FuzzyScorer` for all files within the main project directory.

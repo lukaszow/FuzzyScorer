@@ -44,9 +44,9 @@ dotnet test --collect:"XPlat Code Coverage"
 
 | Element | Convention | Example |
 |---------|------------|---------|
-| Classes/Interfaces | PascalCase | `Scorer`, `WordScore` |
-| Methods/Properties | PascalCase | `GetScoringWords`, `Score` |
-| Local Variables | camelCase | `inputText`, `targetSimilarity` |
+| Classes/Interfaces | PascalCase | `Scorer`, `WordScore`, `IFuzzyScorer` |
+| Methods/Properties | PascalCase | `GetWordFrequencies`, `ScoreAsync` |
+| Local Variables | camelCase | `inputText`, `maxEditDistance` |
 | Private Fields | _camelCase | `_wordScores`, `_maxInputLength` |
 | Constants | PascalCase | `MaxWordsPerText`, `MaxInputLength` |
 
@@ -106,20 +106,20 @@ foreach (var word in normalizedWords)
 - Catch `OperationCanceledException` to allow graceful cancellation
 
 ```csharp
-if (targetSimilarity < 0 || targetSimilarity > MaxSimilarityThreshold)
-    throw new ArgumentException($"targetSimilarity must be between 0 and {MaxSimilarityThreshold}", nameof(targetSimilarity));
+if (maxEditDistance < 0 || maxEditDistance > MaxEditDistanceLimit)
+    throw new ArgumentException($"maxEditDistance must be between 0 and {MaxEditDistanceLimit}", nameof(maxEditDistance));
 ```
 
 ### Security Limits (DoS Prevention)
 
-The `Scorer` class enforces these limits:
+The `WordScorer` class enforces these limits:
 
 | Limit | Value | Purpose |
 |-------|-------|---------|
 | MaxInputLength | 1,000,000 | Max characters per input |
 | MaxWordsPerText | 10,000 | Max words per text |
 | MaxWordLength | 256 | Max characters per word |
-| MaxSimilarityThreshold | 50 | Max Levenshtein distance |
+| MaxEditDistanceLimit | 50 | Max Levenshtein distance |
 
 ## Project Structure
 
@@ -128,8 +128,12 @@ FuzzyScorer/
 ├── FuzzyScorer.sln              # Solution file
 ├── FuzzyScorer/                 # Main library project
 │   ├── FuzzyScorer.csproj
-│   ├── Scorer.cs              # Core scoring logic
-│   └── WordScore.cs            # Data model (POCO)
+│   ├── Scorer.cs              # Core word frequency and similarity logic
+│   ├── WordScore.cs            # Data model (POCO)
+│   ├── IFuzzyScorer.cs        # Interface for async fuzzy scoring
+│   ├── FuzzyScorer.cs         # Instance implementation of IFuzzyScorer
+│   ├── FuzzyScorerResult.cs   # Result model (sizes + error list)
+│   └── ErrorEntry.cs          # Error entry model (text, count, lines)
 └── FuzzyScorer.Tests/          # Unit test project
     ├── FuzzyScorer.Tests.csproj
     └── ScoringTests.cs        # xUnit tests

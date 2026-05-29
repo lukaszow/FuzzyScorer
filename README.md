@@ -27,6 +27,8 @@ The package includes XML documentation files for full IntelliSense support.
 
 ### Usage
 
+#### Quick Analysis (Static API)
+
 ```csharp
 using FuzzyScorer;
 
@@ -40,7 +42,31 @@ foreach (var word in results)
 // apple: 3
 ```
 
-`GroupSimilarWords` is the primary entry point — it handles both exact case-insensitive grouping and fuzzy matching. For word-frequency-only scenarios, use `WordScorer.GetWordFrequencies(text)`.
+`GroupSimilarWords` is the primary entry point for static usage — it handles both exact case-insensitive grouping and fuzzy matching. For word-frequency-only scenarios, use `WordScorer.GetWordFrequencies(text)`.
+
+#### Async Analysis with Error Detection (Instance API)
+
+```csharp
+using FuzzyScorer;
+
+IFuzzyScorer scorer = new FuzzyScorer();
+string text = "apple aple apple\nbanana cherry";
+
+var result = await scorer.ScoreAsync(text, sensitivity: 0.02, CancellationToken.None);
+
+Console.WriteLine($"Original words: {result.OriginalSize}");   // 5
+Console.WriteLine($"Compressed:     {result.CompressedSize}");  // 4 (aple merged with apple)
+
+foreach (var error in result.Errors)
+    Console.WriteLine($"Typo '{error.ErrorText}' (x{error.RepetitionCount}) on lines: {string.Join(",", error.LineNumbers)}");
+// Output:
+// Typo 'aple' (x1) on lines: 1
+```
+
+`ScoreAsync` returns a `FuzzyScorerResult` with:
+- **OriginalSize** — total word count
+- **CompressedSize** — unique groups after fuzzy merging
+- **Errors** — detected potential typos (words that differ from the most frequent word in their similarity group)
 
 ### Running Tests
 
@@ -63,18 +89,18 @@ Requires [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 ### Stability
 
 - .NET 10.0 with nullable reference types enabled.
-- 100% of public API covered by xUnit tests (16 tests, all passing).
+- 100% of public API covered by xUnit tests (26 tests, all passing).
 - Every public member has XML documentation.
 - All public methods are pure and stateless — no mutable shared state, no thread-safety concerns.
 
 ### Flexibility
 
-- Two orthogonal operations exposed as separate methods: exact frequency counting and fuzzy similarity grouping.
-- `WordScore` is a simple immutable POCO — trivially mapped to JSON, DTOs, or database rows.
+- Three operations: exact frequency counting (`GetWordFrequencies`), fuzzy similarity grouping (`GroupSimilarWords`), and async analysis with error detection (`ScoreAsync`).
+- `WordScore` and `ErrorEntry` are simple immutable POCOs — trivially mapped to JSON, DTOs, or database rows.
 - No IoC container or configuration required — drop in and call.
 
 ### Extensibility
 
-- Static facade can be wrapped in an `IWordScorer` interface or extended with instance-based options without breaking the existing API surface.
+- Instance API via `IFuzzyScorer` interface for testability and DI — static `WordScorer` facade preserved for backward compatibility.
 - Levenshtein implementation is private — can be replaced or optimized without affecting callers.
 - Security limits are constants, not hardcoded magic numbers — adjustable without changing behavior.
