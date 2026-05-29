@@ -227,5 +227,143 @@ namespace FuzzyScorer.Tests
         }
 
         #endregion
+
+        #region FuzzyScorer Tests (ScoreAsync)
+
+        private readonly IFuzzyScorer _scorer = new FuzzyScorer();
+
+        /// <summary>
+        /// Typical case: ScoreAsync should return correct original and compressed sizes.
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_TypicalCase_ReturnsCorrectSizes()
+        {
+            string inputText = "apple banana apple cherry banana apple";
+            var result = await _scorer.ScoreAsync(inputText, 0.0, CancellationToken.None);
+
+            Assert.Equal(6, result.OriginalSize);
+            Assert.Equal(3, result.CompressedSize);
+            Assert.Empty(result.Errors);
+        }
+
+        /// <summary>
+        /// ScoreAsync should detect potential typos (words that differ by edits).
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_DetectsTypos()
+        {
+            string inputText = "apple aple apple";
+            var result = await _scorer.ScoreAsync(inputText, 0.02, CancellationToken.None);
+
+            Assert.Equal(3, result.OriginalSize);
+            Assert.Equal(1, result.CompressedSize);
+            Assert.Single(result.Errors);
+            Assert.Equal("aple", result.Errors[0].ErrorText);
+            Assert.Equal(1, result.Errors[0].RepetitionCount);
+        }
+
+        /// <summary>
+        /// Sensitivity of 0.0 should not perform any fuzzy grouping, so no typos are detected.
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_SensitivityZero_ExactMatchOnly()
+        {
+            string inputText = "apple aple";
+            var result = await _scorer.ScoreAsync(inputText, 0.0, CancellationToken.None);
+
+            Assert.Equal(2, result.OriginalSize);
+            Assert.Equal(2, result.CompressedSize);
+            Assert.Empty(result.Errors);
+        }
+
+        /// <summary>
+        /// Sensitivity of 1.0 should group all words together even if they differ significantly.
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_SensitivityOne_MaxFuzzy()
+        {
+            string inputText = "apple aple";
+            var result = await _scorer.ScoreAsync(inputText, 1.0, CancellationToken.None);
+
+            Assert.Equal(2, result.OriginalSize);
+            Assert.Equal(1, result.CompressedSize);
+            Assert.Single(result.Errors);
+        }
+
+        /// <summary>
+        /// Empty input should return zeros and no errors.
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_EmptyInput_ReturnsZeroSizes()
+        {
+            var result = await _scorer.ScoreAsync("", 0.5, CancellationToken.None);
+
+            Assert.Equal(0, result.OriginalSize);
+            Assert.Equal(0, result.CompressedSize);
+            Assert.Empty(result.Errors);
+        }
+
+        /// <summary>
+        /// Whitespace-only input should return zeros and no errors.
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_WhitespaceInput_ReturnsZeroSizes()
+        {
+            var result = await _scorer.ScoreAsync("   ", 0.5, CancellationToken.None);
+
+            Assert.Equal(0, result.OriginalSize);
+            Assert.Equal(0, result.CompressedSize);
+            Assert.Empty(result.Errors);
+        }
+
+        /// <summary>
+        /// ErrorEntry should contain correct line numbers when error spans multiple lines.
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_LineNumbers_AreCorrect()
+        {
+            string inputText = "apple banana\napple cherry\nbanana aple";
+            var result = await _scorer.ScoreAsync(inputText, 0.02, CancellationToken.None);
+
+            Assert.Single(result.Errors);
+            Assert.Equal("aple", result.Errors[0].ErrorText);
+            Assert.Equal(1, result.Errors[0].RepetitionCount);
+            Assert.Contains(3, result.Errors[0].LineNumbers);
+        }
+
+        /// <summary>
+        /// Pre-cancelled token should throw OperationCanceledException.
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_CancelledToken_Throws()
+        {
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+                _scorer.ScoreAsync("some input", 0.5, cts.Token));
+        }
+
+        /// <summary>
+        /// Sensitivity below 0 should throw ArgumentException.
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_SensitivityBelowZero_Throws()
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                _scorer.ScoreAsync("test", -0.1, CancellationToken.None));
+        }
+
+        /// <summary>
+        /// Sensitivity above 1 should throw ArgumentException.
+        /// </summary>
+        [Fact]
+        public async Task ScoreAsync_SensitivityAboveOne_Throws()
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                _scorer.ScoreAsync("test", 1.1, CancellationToken.None));
+        }
+
+        #endregion
     }
 }
