@@ -23,7 +23,7 @@ namespace FuzzyScorer
         /// <summary>Maximum allowed Levenshtein edit distance (50).</summary>
         public const int MaxEditDistanceLimit = 50;
 
-        private static readonly Regex WordNormalizationRegex = new Regex(@"[^\p{L}\p{N}\s-]", RegexOptions.Compiled);
+        internal static readonly Regex WordNormalizationRegex = new Regex(@"[^\p{L}\p{N}\s-]", RegexOptions.Compiled);
 
         /// <summary>
         /// Returns word frequency counts from the input text.
@@ -104,10 +104,41 @@ namespace FuzzyScorer
         }
 
         /// <summary>
+        /// Groups words by Levenshtein similarity and returns the original word groups.
+        /// Each inner list contains all words assigned to one similarity group.
+        /// The first occurrence of a word becomes the group's leader.
+        /// Results are order-dependent.
+        /// </summary>
+        internal static List<List<string>> GetWordGroups(string? inputText, int maxEditDistance, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(inputText))
+                return new List<List<string>>();
+
+            if (maxEditDistance < 0 || maxEditDistance > MaxEditDistanceLimit)
+                throw new ArgumentException($"maxEditDistance must be between 0 and {MaxEditDistanceLimit}", nameof(maxEditDistance));
+
+            var allWords = NormalizeAndExtractWords(inputText, cancellationToken);
+            return BuildSimilarityGroups(allWords, maxEditDistance, cancellationToken);
+        }
+
+        /// <summary>
         /// Groups words by Levenshtein similarity. The first occurrence of a word becomes
         /// the group's representative. Results are order-dependent.
         /// </summary>
         private static List<WordScore> GroupBySimilarity(List<string> words, int maxEditDistance, CancellationToken cancellationToken)
+        {
+            var groups = BuildSimilarityGroups(words, maxEditDistance, cancellationToken);
+
+            return groups
+                .Select(group => new WordScore(group[0], group.Count))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Builds similarity groups for a list of words. Each inner list contains
+        /// all words assigned to one group. The first occurrence becomes the group leader.
+        /// </summary>
+        private static List<List<string>> BuildSimilarityGroups(List<string> words, int maxEditDistance, CancellationToken cancellationToken)
         {
             var groups = new List<List<string>>();
             var lowerGroupLeaders = new List<string>();
@@ -135,9 +166,7 @@ namespace FuzzyScorer
                 }
             }
 
-            return groups
-                .Select(group => new WordScore(group[0], group.Count))
-                .ToList();
+            return groups;
         }
 
         /// <summary>
