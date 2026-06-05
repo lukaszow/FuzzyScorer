@@ -5,29 +5,30 @@ This file documents the project structure and architectural patterns for the `Fu
 ## Project Structure
 
 ```text
-FuzzyScorer/
-├── AI_RULES.md                # Project-specific AI guidelines and standards
-├── AGENTS.md                  # AI agent development guide
-├── STRUCTURE.md               # This file
-├── README.md                  # Project documentation
-├── SECURITY.md                # Security policy and threat model
-├── DEVELOPMENT.md             # Development notes and guidelines
-├── nuget.config               # Local NuGet source configuration
-├── pack.ps1                   # Script to build and pack NuGet package
-├── FuzzyScorer.sln             # Visual Studio Solution file
-├── nupkgs/                    # Output directory for built .nupkg files
-├── FuzzyScorer/                # Main project directory
-│   ├── FuzzyScorer.csproj      # .NET 10.0 project file
-│   ├── Scorer.cs              # Core word frequency and similarity logic
-│   ├── WordScore.cs           # Data model for word analysis (immutable)
-│   ├── IFuzzyScorer.cs        # Interface for async fuzzy scoring
-│   ├── FuzzyScorer.cs         # Instance implementation of IFuzzyScorer
-│   ├── FuzzyScorerResult.cs   # Result model (sizes + error list)
-│   ├── ErrorEntry.cs          # Error entry model (text, count, lines)
-│   └── Properties/            # Project assembly information
-└── FuzzyScorer.Tests/          # Unit test project (xUnit)
+./
+├── FuzzyScorer/                 # Main library project
+│   ├── AI_RULES.md              # Project-specific AI guidelines and standards
+│   ├── AGENTS.md                # AI agent development guide
+│   ├── STRUCTURE.md             # This file
+│   ├── README.md                # Project documentation
+│   ├── SECURITY.md              # Security policy and threat model
+│   ├── DEVELOPMENT.md           # Development notes and guidelines
+│   ├── nuget.config             # Local NuGet source configuration
+│   ├── pack.ps1                 # Script to build and pack NuGet package
+│   ├── FuzzyScorer.sln          # Visual Studio Solution file
+│   ├── nupkgs/                  # Output directory for built .nupkg files
+│   └── FuzzyScorer/             # Source code directory
+│       ├── FuzzyScorer.csproj   # .NET 10.0 project file
+│       ├── Scorer.cs            # Core word frequency and similarity logic
+│       ├── WordScore.cs         # Data model for word analysis (immutable)
+│       ├── IFuzzyScorer.cs      # Interface for async fuzzy scoring
+│       ├── FuzzyScorer.cs       # Instance implementation of IFuzzyScorer
+│       ├── FuzzyScorerResult.cs # Result model (sizes + error list)
+│       ├── ErrorEntry.cs        # Error entry model (text, count, lines)
+│       └── Properties/          # Project assembly information
+└── FuzzyScorer.Tests/           # Unit test project (xUnit)
     ├── FuzzyScorer.Tests.csproj
-    └── ScoringTests.cs        # Unit tests for scoring logic
+    └── ScoringTests.cs          # Unit tests for scoring logic
 ```
 
 ## Architecture & Guidelines
