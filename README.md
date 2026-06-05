@@ -89,7 +89,7 @@ Requires [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 ### Stability
 
 - .NET 10.0 with nullable reference types enabled.
-- 100% of public API covered by xUnit tests (26 tests, all passing).
+- 100% of public API covered by xUnit tests (49 tests, all passing).
 - Every public member has XML documentation.
 - All public methods are pure and stateless — no mutable shared state, no thread-safety concerns.
 
