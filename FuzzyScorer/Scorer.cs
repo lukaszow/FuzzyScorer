@@ -6,11 +6,11 @@ using System.Threading;
 
 namespace FuzzyScorer
 {
-    /// <summary>
-    /// Provides word frequency analysis and fuzzy similarity grouping for text input.
-    /// </summary>
     public class WordScorer
     {
+        /// <summary>Maximum allowed edit distance (50).</summary>
+        public const int MaxEditDistanceLimit = 50;
+
         /// <summary>Maximum allowed input length in characters (1,000,000).</summary>
         public const int MaxInputLength = 1_000_000;
 
@@ -19,9 +19,6 @@ namespace FuzzyScorer
 
         /// <summary>Maximum allowed length of a single word in characters (256).</summary>
         public const int MaxWordLength = 256;
-
-        /// <summary>Maximum allowed Levenshtein edit distance (50).</summary>
-        public const int MaxEditDistanceLimit = 50;
 
         internal static readonly Regex WordNormalizationRegex = new Regex(@"[^\p{L}\p{N}\s-]", RegexOptions.Compiled);
 
@@ -60,15 +57,14 @@ namespace FuzzyScorer
         }
 
         /// <summary>
-        /// Groups words that differ by at most <paramref name="maxEditDistance"/> Levenshtein edits,
+        /// Groups words that differ by at most <paramref name="maxEditDistance"/> edits,
         /// merging typos and small variations into the same group.
         /// The first occurrence of a word becomes the group representative.
         /// Results are order-dependent: different input ordering may produce different representatives.
         /// </summary>
         /// <param name="inputText">The raw text to analyze.</param>
         /// <param name="maxEditDistance">
-        /// The maximum number of single-character edits (insert, delete, substitute) allowed between
-        /// two words for them to be considered similar. Must be between 0 and <see cref="MaxEditDistanceLimit"/>.
+        /// Maximum allowed difference for similarity. Must be between 0 and <see cref="MaxEditDistanceLimit"/>.
         /// </param>
         /// <returns>A list of WordScore objects where similar words are merged into a single entry.</returns>
         /// <exception cref="ArgumentException">Thrown if parameters exceed limits.</exception>
@@ -78,14 +74,13 @@ namespace FuzzyScorer
         }
 
         /// <summary>
-        /// Groups words that differ by at most <paramref name="maxEditDistance"/> Levenshtein edits,
+        /// Groups words that differ by at most <paramref name="maxEditDistance"/> edits,
         /// merging typos and small variations into the same group.
         /// Supports cancellation token for long-running operations.
         /// </summary>
         /// <param name="inputText">The raw text to analyze.</param>
         /// <param name="maxEditDistance">
-        /// The maximum number of single-character edits (insert, delete, substitute) allowed between
-        /// two words for them to be considered similar. Must be between 0 and <see cref="MaxEditDistanceLimit"/>.
+        /// Maximum allowed difference for similarity. Must be between 0 and <see cref="MaxEditDistanceLimit"/>.
         /// </param>
         /// <param name="cancellationToken">Cancellation token for aborting the operation.</param>
         /// <returns>A list of WordScore objects where similar words are merged into a single entry.</returns>
@@ -104,7 +99,34 @@ namespace FuzzyScorer
         }
 
         /// <summary>
-        /// Groups words by Levenshtein similarity and returns the original word groups.
+        /// Groups a list of words by similarity. Each inner list contains all words
+        /// assigned to one similarity group. The first occurrence becomes the group's leader.
+        /// Results are order-dependent.
+        /// </summary>
+        /// <param name="words">The list of words to group.</param>
+        /// <param name="maxEditDistance">Maximum edit distance for similarity.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>List of similarity groups.</returns>
+        public static List<List<string>> GroupWordsBySimilarity(List<string> words, int maxEditDistance, CancellationToken cancellationToken)
+        {
+            return BuildSimilarityGroups(words, maxEditDistance, cancellationToken);
+        }
+
+        /// <summary>
+        /// Returns true if the two words are similar within the given edit distance threshold.
+        /// </summary>
+        /// <param name="word1">First word.</param>
+        /// <param name="word2">Second word.</param>
+        /// <param name="maxEditDistance">Maximum allowed edit distance.</param>
+        public static bool AreWordsSimilar(string word1, string word2, int maxEditDistance)
+        {
+            return ComputeEditDistance(
+                word1.ToLowerInvariant(),
+                word2.ToLowerInvariant()) <= maxEditDistance;
+        }
+
+        /// <summary>
+        /// Groups words by similarity and returns the original word groups.
         /// Each inner list contains all words assigned to one similarity group.
         /// The first occurrence of a word becomes the group's leader.
         /// Results are order-dependent.
@@ -122,7 +144,7 @@ namespace FuzzyScorer
         }
 
         /// <summary>
-        /// Groups words by Levenshtein similarity. The first occurrence of a word becomes
+        /// Groups words by similarity. The first occurrence of a word becomes
         /// the group's representative. Results are order-dependent.
         /// </summary>
         private static List<WordScore> GroupBySimilarity(List<string> words, int maxEditDistance, CancellationToken cancellationToken)
@@ -151,7 +173,7 @@ namespace FuzzyScorer
                 bool addedToGroup = false;
                 for (int i = 0; i < groups.Count; i++)
                 {
-                    if (ComputeLevenshteinDistance(lowerWord, lowerGroupLeaders[i]) <= maxEditDistance)
+                    if (ComputeEditDistance(lowerWord, lowerGroupLeaders[i]) <= maxEditDistance)
                     {
                         groups[i].Add(word);
                         addedToGroup = true;
@@ -170,9 +192,9 @@ namespace FuzzyScorer
         }
 
         /// <summary>
-        /// Computes the Levenshtein distance between two strings.
+        /// Computes the edit distance between two strings.
         /// </summary>
-        private static int ComputeLevenshteinDistance(string s, string t)
+        private static int ComputeEditDistance(string s, string t)
         {
             if (string.IsNullOrEmpty(s)) return string.IsNullOrEmpty(t) ? 0 : t.Length;
             if (string.IsNullOrEmpty(t)) return s.Length;
