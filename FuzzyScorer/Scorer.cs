@@ -160,7 +160,7 @@ namespace FuzzyScorer
         /// Builds similarity groups for a list of words. Each inner list contains
         /// all words assigned to one group. The first occurrence becomes the group leader.
         /// </summary>
-        private static List<List<string>> BuildSimilarityGroups(List<string> words, int maxEditDistance, CancellationToken cancellationToken)
+        internal static List<List<string>> BuildSimilarityGroups(List<string> words, int maxEditDistance, CancellationToken cancellationToken)
         {
             var groups = new List<List<string>>();
             var lowerGroupLeaders = new List<string>();
@@ -223,7 +223,7 @@ namespace FuzzyScorer
         /// Strips non-alphanumeric characters (except hyphens and whitespace),
         /// splits into words, and enforces security limits.
         /// </summary>
-        private static List<string> NormalizeAndExtractWords(string inputText, CancellationToken cancellationToken)
+        internal static List<string> NormalizeAndExtractWords(string inputText, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 

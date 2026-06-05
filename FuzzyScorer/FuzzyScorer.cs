@@ -44,16 +44,17 @@ namespace FuzzyScorer
 
             int maxEditDistance = (int)Math.Round(sensitivity * WordScorer.MaxEditDistanceLimit);
 
-            var wordLineMap = BuildWordLineMap(inputText, cancellationToken);
+            var allWords = WordScorer.NormalizeAndExtractWords(inputText, cancellationToken);
+            int originalSize = allWords.Count;
 
-            var frequencies = WordScorer.GetWordFrequencies(inputText, cancellationToken);
-            int originalSize = frequencies.Sum(f => f.Score);
+            var freqDict = allWords
+                .GroupBy(w => w, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
 
-            var groups = WordScorer.GetWordGroups(inputText, maxEditDistance, cancellationToken);
+            var groups = WordScorer.BuildSimilarityGroups(allWords, maxEditDistance, cancellationToken);
             int compressedSize = groups.Count;
 
-            var freqDict = frequencies.ToDictionary(f => f.Text, f => f.Score, StringComparer.OrdinalIgnoreCase);
-
+            var wordLineMap = BuildWordLineMap(inputText, cancellationToken);
             var errors = DetectErrors(groups, freqDict, wordLineMap);
 
             return new FuzzyScorerResult(originalSize, compressedSize, errors);
