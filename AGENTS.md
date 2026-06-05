@@ -134,9 +134,6 @@ FuzzyScorer/
 │   ├── FuzzyScorer.cs         # Instance implementation of IFuzzyScorer
 │   ├── FuzzyScorerResult.cs   # Result model (sizes + error list)
 │   └── ErrorEntry.cs          # Error entry model (text, count, lines)
-└── FuzzyScorer.Tests/          # Unit test project
-    ├── FuzzyScorer.Tests.csproj
-    └── ScoringTests.cs        # xUnit tests
 ```
 
 ### Namespace Convention
@@ -147,9 +144,14 @@ FuzzyScorer/
 ### Adding New Files
 
 - Place core logic in `FuzzyScorer/` directory
-- Place tests in `FuzzyScorer.Tests/` directory
+- Place tests in the sibling `FuzzyScorer.Tests/` directory (same level as `FuzzyScorer/`)
 - Follow existing file naming conventions (PascalCase.cs)
-- Do NOT create new top-level folders without explicit permission
+
+## Sibling Projects
+
+- `FuzzyScorer.Tests/` is a separate project at the same level as `FuzzyScorer/`
+- The test project references `FuzzyScorer/FuzzyScorer/FuzzyScorer.csproj`
+- The main project has no reference to tests (tested code does not know about tests)
 
 ## Immutability
 
