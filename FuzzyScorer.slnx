@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="FuzzyScorer.Tests/FuzzyScorer.Tests.csproj" />
+  <Project Path="FuzzyScorer/FuzzyScorer.csproj" />
+</Solution>
