@@ -125,7 +125,7 @@ The `WordScorer` class enforces these limits:
 
 ```
 FuzzyScorer/
-├── FuzzyScorer.sln              # Solution file
+├── FuzzyScorer.slnx             # Solution file
 ├── FuzzyScorer/                 # Main library project
 │   ├── FuzzyScorer.csproj
 │   ├── Scorer.cs              # Core word frequency and similarity logic
@@ -134,6 +134,9 @@ FuzzyScorer/
 │   ├── FuzzyScorer.cs         # Instance implementation of IFuzzyScorer
 │   ├── FuzzyScorerResult.cs   # Result model (sizes + error list)
 │   └── ErrorEntry.cs          # Error entry model (text, count, lines)
+├── FuzzyScorer.Tests/           # Unit test project (xUnit)
+│   ├── FuzzyScorer.Tests.csproj
+│   └── ScoringTests.cs
 ```
 
 ### Namespace Convention
@@ -144,14 +147,8 @@ FuzzyScorer/
 ### Adding New Files
 
 - Place core logic in `FuzzyScorer/` directory
-- Place tests in the sibling `FuzzyScorer.Tests/` directory (same level as `FuzzyScorer/`)
+- Place tests in `FuzzyScorer.Tests/` directory
 - Follow existing file naming conventions (PascalCase.cs)
-
-## Sibling Projects
-
-- `FuzzyScorer.Tests/` is a separate project at the same level as `FuzzyScorer/`
-- The test project references `FuzzyScorer/FuzzyScorer/FuzzyScorer.csproj`
-- The main project has no reference to tests (tested code does not know about tests)
 
 ## Immutability
 

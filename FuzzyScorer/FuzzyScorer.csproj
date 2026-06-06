@@ -14,6 +14,7 @@
     <PackageProjectUrl>https://github.com/lukaszow/FuzzyScorer</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <DefaultItemExcludes>$(DefaultItemExcludes);../FuzzyScorer.Tests/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
