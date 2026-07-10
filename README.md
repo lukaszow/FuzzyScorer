@@ -24,7 +24,7 @@ FuzzyScorer solves this: it gives you accurate word counts by merging exact dupl
 ### Installation
 
 ```bash
-dotnet add package FuzzyScorer --version 1.0.0
+dotnet add package FuzzyScorer --version 1.1.0
 ```
 
 The package includes XML documentation files for full IntelliSense support.

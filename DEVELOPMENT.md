@@ -31,7 +31,7 @@ Simply mentioning or pasting the bootstrap prompt ensures the agent is fully ali
 
 ## 🔒 Security & Changelog
 
-### Version 1.2 - Async API & Error Detection (2026-05-29)
+### Version 1.1.0 - Async API & Error Detection (2026-07-10)
 
 **Implemented Features:**
 
@@ -52,7 +52,7 @@ Simply mentioning or pasting the bootstrap prompt ensures the agent is fully ali
    - Exposed `WordNormalizationRegex` and `GetWordGroups` as `internal` for `FuzzyScorer`
 
 **Testing:**
-- All 26 unit tests pass (16 existing + 10 new)
+- All 49 unit tests pass
 - Build: Clean (0 warnings, 0 errors)
 
 **Migration Guide for Existing Code:**
