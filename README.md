@@ -1,5 +1,9 @@
 # FuzzyScorer
 
+FuzzyScorer is a stateless NuGet library: static WordScorer for fire-and-forget frequency/similarity analysis, injectable IFuzzyScorer for async typo detection. Outputs immutable POCOs — serializable, no config, no dependencies.
+
+Fuzzy grouping merges near-identical words (typos, OCR variants) via edit distance — "aple" joins "apple" instead of scattering counts. Scorer tallies the resulting clusters into frequency-ranked groups, surfacing which terms dominate and which are likely errors.
+
 ## 1. The Problem
 
 Raw text from users, surveys, or OCR is full of noisy variants — `"Excellent"`, `"Excelent"`, `"excelent"`, `"Excelleent"`. A naive word counter treats each as a separate word, fragmenting your frequency counts. You either live with the noise or write fragile custom normalization.
