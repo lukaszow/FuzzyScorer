@@ -5,7 +5,7 @@
 - **.NET 10.0**, **C# 13**, **library** (NuGet package: `FuzzyScorer`)
 - **xUnit** test project, 49 tests, `InternalsVisibleTo` grants access to `internal` members
 - Solution uses **`.slnx`** format (not `.sln`)
-- **No CI workflows** — build/test must be run locally
+- **CI workflow**: `.github/workflows/publish.yml` — triggers on tag `v*.*.*`, builds, tests, packs, and pushes to NuGet
 - `GenerateDocumentationFile>true` — missing XML docs become compiler warnings
 
 ## Commands
