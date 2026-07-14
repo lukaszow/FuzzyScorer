@@ -126,10 +126,8 @@ Security audit confirms:
 ## Dependency Management
 
 ### Direct Dependencies
-- **ModelContextProtocol.NET.Server** (v0.3.3-alpha)
-  - Used for: Protocol server communication
-  - Status: Pre-release (alpha) — review for production use
-  - Recommendation: Track updates; consider pinning version until stable release
+- **None** — FuzzyScorer targets `net10.0` with zero NuGet package references.
+  Only the .NET runtime BCL is required.
 
 ### Indirect Dependencies
 Run vulnerability scan regularly:
@@ -142,6 +140,17 @@ No automatic detection in NuGet; recommend SBOM tools:
 - **Dependabot** (GitHub): Automated dependency scanning
 - **Snyk**: Software composition analysis
 - **CycloneDX**: SBOM generation
+
+## Security Audit Log
+
+| Date | Check | Result |
+|---|---|---|
+| 2026-07-14 | Secrets/credentials scan (full codebase) | **PASS** — no secrets, keys, or credentials found |
+| 2026-07-14 | Vulnerable packages (`dotnet list package --vulnerable`) | **PASS** — zero vulnerabilities in both projects |
+| 2026-07-14 | External network calls in library code | **PASS** — no outbound HTTP; offline library |
+| 2026-07-14 | Unsafe code / P/Invoke | **PASS** — no `unsafe`, `DllImport`, `BinaryFormatter`, or `Marshal` |
+| 2026-07-14 | Direct dependency audit (csproj vs docs) | **PASS** — zero `PackageReference` entries; docs corrected |
+| 2026-07-14 | .gitignore sensitive exclusions | **PASS** — no patterns for credential files |
 
 ## Usage Guidelines
 
