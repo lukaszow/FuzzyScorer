@@ -6,8 +6,21 @@
     <Nullable>enable</Nullable>
     <PackageId>FuzzyScorer</PackageId>
     <Version>1.1.0</Version>
+    <Title>FuzzyScorer — Fuzzy Text Matching &amp; Word Grouping for .NET</Title>
     <Authors>Lukaszow</Authors>
-    <Description>Lightweight .NET library for text normalization and fuzzy word grouping via Levenshtein distance.</Description>
+    <Description>
+      Lightweight .NET library for text normalization, fuzzy word grouping, and word frequency analysis
+      via Levenshtein distance. Ideal for OCR post-correction, typo detection, data cleaning,
+      deduplication, and text similarity scoring. Supports exact word-frequency counts and fuzzy
+      similarity-grouping with configurable edit-distance thresholds.
+    </Description>
+    <PackageTags>
+      fuzzy-matching;levenshtein;text-similarity;word-grouping;string-distance;
+      ocr-correction;data-cleaning;word-frequency;typo-correction;text-processing;
+      deduplication;fuzzy;scoring;normalization;nlp;word-count;edit-distance;
+      approximate-matching;text-analysis;csharp;dotnet;.net
+    </PackageTags>
+    <Copyright>© Lukaszow. MIT Licensed.</Copyright>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/lukaszow/FuzzyScorer</RepositoryUrl>
