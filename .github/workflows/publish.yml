@@ -20,6 +20,9 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Create local package directory
+        run: mkdir -p nupkgs
+
       - name: Build
         run: dotnet build --configuration Release
 
