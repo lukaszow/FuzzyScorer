@@ -5,46 +5,30 @@
 [![License: MIT](https://img.shields.io/github/license/lukaszow/FuzzyScorer)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/download/dotnet/10.0)
 
-FuzzyScorer is a .NET NuGet library that counts words in messy text and merges typos with their correct forms — so "aple" and "Apple" both count as "apple" — giving you accurate frequencies in one call.
+FuzzyScorer to biblioteka .NET, która zlicza słowa w nieczystym tekście i łączy literówki z ich poprawnymi formami — np. "aple" i "Apple" liczy jako "apple" — dając dokładne częstotliwości w jednym wywołaniu.
 
-Use the static WordScorer for fire-and-forget frequency/similarity analysis, or inject IFuzzyScorer for async typo detection — no config, no dependencies.
+Użyj statycznej klasy `WordScorer` do szybkiej analizy częstotliwości/podobieństwa, lub wstrzyknij `IFuzzyScorer` do asynchronicznego wykrywania literówek — bez konfiguracji i zależności.
 
-## Table of Contents
+## Spis treści
 
-- [The Problem](#the-problem)
-- [Quick Start](#quick-start)
-- [API Reference](#api-reference)
-- [Security & Input Limits](#security--input-limits)
-- [Quality](#quality)
+- [Szybki start](#szybki-start)
+- [Jak to działa](#jak-to-działa)
+- [API](#api)
+- [Limity i bezpieczeństwo](#limity-i-bezpieczeństwo)
 - [FAQ](#faq)
-- [License](#license)
+- [Licencja](#licencja)
 
-## The Problem
+## Szybki start
 
-Raw text from users, surveys, or OCR is full of noisy variants — `"Excellent"`, `"Excelent"`, `"excelent"`, `"Excelleent"`. A naive word counter treats each as a separate word, fragmenting your frequency counts. You either live with the noise or write fragile custom normalization.
-
-FuzzyScorer gives you accurate word counts by merging exact duplicates (case-insensitive) and structurally similar variants (via Levenshtein edit distance) in a single call.
-
-**Structural similarity, not semantic.** Unlike AI models that understand meaning (knowing "cat" and "dog" are both pets), FuzzyScorer looks at how a word is *built* — so `"TIGER"` and `"TlGER"` (a common OCR error) are recognized as the same word, even though no semantic model would confuse them.
-
-### Real-World Use Cases
-
-- **Live Event Feedback**: Merge typos in survey results (e.g., `"Excelent"` and `"Excellent"`) to show true consensus in word clouds.
-- **OCR Data Cleaning**: Repair text where `"l"` (lowercase L) is mistaken for `"I"` (capital I) in scanned documents.
-- **Word-Level Deduplication**: Spot duplicate entries like `"John"` and `"Jon"` in customer records.
-- **Spam Filtering**: Catch obfuscated words designed to bypass simple filters (e.g., `"M0ney"`, `"W4tch"`).
-
-## Quick Start
-
-### Installation
+### Instalacja
 
 ```bash
 dotnet add package FuzzyScorer
 ```
 
-Requires [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). The package includes XML documentation files for full IntelliSense support.
+Wymaga [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). Pakiet zawiera dokumentację XML dla pełnego IntelliSense.
 
-### Count words with typo merging
+### Zliczanie słów z łączeniem literówek
 
 ```csharp
 using FuzzyScorer;
@@ -55,21 +39,36 @@ var results = WordScorer.GroupSimilarWords(text, maxEditDistance: 1);
 foreach (var word in results)
     Console.WriteLine($"{word.Text}: {word.Score}");
 
-// Output:
+// Wynik:
 // apple: 3
 ```
 
-That's the whole library in one call — no config, no setup.
+To cała biblioteka w jednym wywołaniu — bez konfiguracji i dodatkowych ustawień.
 
-## API Reference
+## Jak to działa
 
-### Static API (`WordScorer`)
+1. **Normalizacja** — tekst jest czyszczony (usuwane są znaki niebędące literami, cyframi, myślnikami lub spacjami), a słowa są dzielone na podstawie białych znaków.
+2. **Zliczanie** — słowa są porównywane bez rozróżniania wielkości liter.
+3. **Łączenie** — słowa o odległości Levenshteina ≤ `maxEditDistance` są grupowane, a pierwsze wystąpienie staje się reprezentantem grupy.
 
-All static methods return immutable `WordScore` instances (word text + score) and never return `null`.
+**Uwaga:** FuzzyScorer działa strukturalnie, nie semantycznie. `"TIGER"` i `"TlGER"` zostaną połączone, ale `"cat"` i `"dog"` nigdy.
+
+### Przykłady zastosowań
+
+- **Ankiety i opinie** — scal literówki w wynikach ankiet (np. `"Excelent"` i `"Excellent"`), aby zobaczyć prawdziwy konsensus w chmurze słów.
+- **Czyszczenie OCR** — napraw tekst, w którym `"l"` (małe L) jest mylone z `"I"` (duże I) w zeskanowanych dokumentach.
+- **Deduplikacja rekordów** — wykryj duplikaty takie jak `"John"` i `"Jon"` w bazie klientów.
+- **Filtrowanie spamu** — wyłapuj zniekształcone słowa, które omijają proste filtry (np. `"M0ney"`, `"W4tch"`).
+
+## API
+
+### Statyczne metody (`WordScorer`)
+
+Wszystkie statyczne metody zwracają niezmienne instancje `WordScore` (tekst słowa + wynik) i nigdy nie zwracają `null`.
 
 #### `GetWordFrequencies(string? text[, CancellationToken ct])`
 
-Exact case-insensitive frequency counting. No fuzzy merging.
+Dokładne zliczanie częstotliwości bez łączenia literówek (bez rozróżniania wielkości liter).
 
 ```csharp
 var results = WordScorer.GetWordFrequencies("Apple apple APPLE");
@@ -78,10 +77,10 @@ var results = WordScorer.GetWordFrequencies("Apple apple APPLE");
 
 #### `GroupSimilarWords(string? text, int maxEditDistance[, CancellationToken ct])`
 
-Case-insensitive counting **plus** fuzzy merging via Levenshtein edit distance. Words within `maxEditDistance` edits of the group's first occurrence are merged.
+Zliczanie **plus** łączenie literówek na podstawie odległości Levenshteina. Słowa w odległości ≤ `maxEditDistance` od pierwszego wystąpienia są scalane.
 
-- The **first occurrence** of a word becomes the group's representative — results depend on input order.
-- `maxEditDistance` must be between 0 and 50.
+- **Pierwsze wystąpienie** słowa staje się reprezentantem grupy — wyniki zależą od kolejności wejściowej.
+- `maxEditDistance` musi być w zakresie 0–50.
 
 ```csharp
 var results = WordScorer.GroupSimilarWords("apple aple apple", maxEditDistance: 1);
@@ -90,7 +89,7 @@ var results = WordScorer.GroupSimilarWords("apple aple apple", maxEditDistance: 
 
 #### `AreWordsSimilar(string a, string b, int maxEditDistance)`
 
-Quick boolean check — is `b` within `maxEditDistance` edits of `a`? Case-insensitive.
+Szybkie sprawdzenie, czy `b` jest w odległości ≤ `maxEditDistance` od `a` (bez rozróżniania wielkości liter).
 
 ```csharp
 bool isTypo = WordScorer.AreWordsSimilar("aple", "apple", maxEditDistance: 1); // true
@@ -98,7 +97,7 @@ bool isTypo = WordScorer.AreWordsSimilar("aple", "apple", maxEditDistance: 1); /
 
 #### `GroupWordsBySimilarity(List<string> words, int maxEditDistance, CancellationToken ct)`
 
-Groups a **pre-normalized word list** into clusters (no text parsing or normalization applied). Each inner list is one group; the first occurrence is the leader. Use it when you already have tokens.
+Grupuje **wcześniej znormalizowaną listę słów** (bez parsowania tekstu). Każda wewnętrzna lista to jedna grupa; pierwsze wystąpienie jest liderem.
 
 ```csharp
 var groups = WordScorer.GroupWordsBySimilarity(
@@ -108,9 +107,9 @@ var groups = WordScorer.GroupWordsBySimilarity(
 // groups: [ [apple, aple], [banana] ]
 ```
 
-### Instance API (`IFuzzyScorer` / `FuzzyScorer`)
+### Metody instancyjne (`IFuzzyScorer` / `FuzzyScorer`)
 
-DI-friendly async API with typo detection. Register `IFuzzyScorer` → `FuzzyScorer` in your container, or use `new FuzzyScorer()` directly.
+DI-friendly asynchroniczne API z wykrywaniem literówek. Zarejestruj `IFuzzyScorer` → `FuzzyScorer` w kontenerze DI lub użyj `new FuzzyScorer()` bezpośrednio.
 
 #### `ScoreAsync(string text, double sensitivity, CancellationToken ct)`
 
@@ -122,67 +121,59 @@ string text = "apple aple apple\nbanana cherry";
 
 var result = await scorer.ScoreAsync(text, sensitivity: 0.02, CancellationToken.None);
 
-Console.WriteLine($"Original words: {result.OriginalSize}");   // 5
-Console.WriteLine($"Compressed:     {result.CompressedSize}");  // 4 (aple merged with apple)
+Console.WriteLine($"Oryginalnych słów: {result.OriginalSize}");   // 5
+Console.WriteLine($"Po kompresji:      {result.CompressedSize}");  // 4 (aple scalone z apple)
 
 foreach (var error in result.Errors)
-    Console.WriteLine($"Typo '{error.ErrorText}' (x{error.RepetitionCount}) on lines: {string.Join(",", error.LineNumbers)}");
-// Output:
-// Typo 'aple' (x1) on lines: 1
+    Console.WriteLine($"Literówka '{error.ErrorText}' (x{error.RepetitionCount}) w liniach: {string.Join(",", error.LineNumbers)}");
+// Wynik:
+// Literówka 'aple' (x1) w liniach: 1
 ```
 
-`sensitivity` (0.0–1.0) maps linearly to the max edit distance: `maxEditDistance = round(sensitivity × 50)`.
+`sensitivity` (0.0–1.0) mapuje liniowo na maksymalną odległość edycji: `maxEditDistance = round(sensitivity × 50)`.
 
-| sensitivity | max edit distance | behavior |
+| sensitivity | max edit distance | zachowanie |
 |---|---|---|
-| 0.0 | 0 | exact match only (case-insensitive) |
-| 0.02 | 1 | catches common typos (`"aple"` → `"apple"`) |
-| 0.5 | 25 | aggressive merging |
-| 1.0 | 50 | maximum fuzziness |
+| 0.0 | 0 | tylko dokładne dopasowanie (bez rozróżniania wielkości liter) |
+| 0.02 | 1 | łapie typowe literówki (`"aple"` → `"apple"`) |
+| 0.5 | 25 | agresywne łączenie |
+| 1.0 | 50 | maksymalna fuzziness |
 
-Returns a `FuzzyScorerResult`:
-- **OriginalSize** — total word count after normalization
-- **CompressedSize** — unique groups after fuzzy merging
-- **Errors** — detected potential typos: every group member that is not the group's most frequent word, reported as `ErrorEntry` (`ErrorText`, `RepetitionCount`, 1-based `LineNumbers`)
+Zwraca `FuzzyScorerResult`:
+- **OriginalSize** — całkowita liczba słów po normalizacji
+- **CompressedSize** — liczba unikalnych grup po łączeniu
+- **Errors** — wykryte potencjalne literówki: każdy członek grupy, który nie jest najczęstszym słowem w grupie, raportowany jako `ErrorEntry` (`ErrorText`, `RepetitionCount`, 1‑based `LineNumbers`)
 
-### Normalization Rules
+### Reguły normalizacji
 
-Before any analysis, input text is:
-- Stripped of everything that is **not** a Unicode letter, Unicode digit, hyphen, or whitespace (`"hello!"` → `"hello"`, `"café"` stays intact, `"well-known"` stays intact)
-- Split into words on whitespace
-- Matched case-insensitively
+Przed analizą tekst jest:
+- Oczyszczany z wszystkiego, co nie jest literą Unicode, cyfrą, myślnikiem lub białym znakiem (`"hello!"` → `"hello"`, `"café"` pozostaje, `"well-known"` pozostaje)
+- Dzielony na słowa na podstawie białych znaków
+- Porównywany bez rozróżniania wielkości liter
 
-## Security & Input Limits
+## Limity i bezpieczeństwo
 
-- Input is validated before processing: max **1,000,000** characters, **10,000** words per text, **256** characters per word, edit distance capped at **50**.
-- Words longer than 256 characters are **silently dropped** (not an error).
-- Limits are public constants on `WordScorer` (`MaxInputLength`, `MaxWordsPerText`, `MaxWordLength`, `MaxEditDistanceLimit`) — adjustable, not magic numbers.
-- No unsafe code, no unmanaged memory, no dependencies beyond the .NET BCL.
-- Cancellation: every long-running path accepts a `CancellationToken` — via overloads on the static methods and as a required parameter on `ScoreAsync` / `GroupWordsBySimilarity`.
-- Results are immutable (`WordScore`, `FuzzyScorerResult`, `ErrorEntry`) — validated at construction, read-only thereafter.
-
-## Quality
-
-- .NET 10.0 with nullable reference types enabled.
-- 49 xUnit tests, all passing; public API covered.
-- Every public member has XML documentation (IntelliSense).
-- Pure, stateless static methods and a stateless instance — safe for concurrent use.
-- Zero external runtime dependencies; results are trivially serializable to JSON, DTOs, or database rows.
+- Wejście jest walidowane przed przetwarzaniem: maks. **1 000 000** znaków, **10 000** słów na tekst, **256** znaków na słowo, odległość edycji ograniczona do **50**.
+- Słowa dłuższe niż 256 znaków są **cicho pomijane** (nie jest to błąd).
+- Limity są publicznymi stałymi na `WordScorer` (`MaxInputLength`, `MaxWordsPerText`, `MaxWordLength`, `MaxEditDistanceLimit`) — można je dostosować.
+- Brak niebezpiecznego kodu, brak niezarządzanej pamięci, brak zależności poza .NET BCL.
+- Anulowanie: każda długotrwała ścieżka akceptuje `CancellationToken` — przez przeciążenia metod statycznych oraz jako wymagany parametr w `ScoreAsync` / `GroupWordsBySimilarity`.
+- Wyniki są niezmienne (`WordScore`, `FuzzyScorerResult`, `ErrorEntry`) — walidowane przy konstrukcji, tylko do odczytu później.
 
 ## FAQ
 
-**Does FuzzyScorer understand meaning?**
-No. It's structural (Levenshtein), not semantic. `"TIGER"` and `"TlGER"` match; `"cat"` and `"dog"` never do.
+**Czy FuzzyScorer rozumie znaczenie?**
+Nie. Działa strukturalnie (Levenshtein), nie semantycznie. `"TIGER"` i `"TlGER"` pasują; `"cat"` i `"dog"` nigdy.
 
-**How do I detect typos?**
-Use `IFuzzyScorer.ScoreAsync` — it reports every group member that isn't the group's most frequent word, with 1-based line numbers.
+**Jak wykrywać literówki?**
+Użyj `IFuzzyScorer.ScoreAsync` — raportuje każdego członka grupy, który nie jest najczęstszym słowem w grupie, z numerami linii (1‑based).
 
-**What happens to words over 256 characters?**
-They are dropped silently.
+**Co się dzieje ze słowami dłuższymi niż 256 znaków?**
+Są cicho pomijane.
 
-**Is any configuration or DI setup required?**
-No. Static methods work out of the box; the instance API is just `new FuzzyScorer()`.
+**Czy wymagana jest konfiguracja lub DI?**
+Nie. Metody statyczne działają od razu; API instancyjne to po prostu `new FuzzyScorer()`.
 
-## License
+## Licencja
 
-MIT — see [LICENSE](LICENSE).
+MIT — zobacz [LICENSE](LICENSE).
