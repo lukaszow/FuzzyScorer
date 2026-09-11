@@ -2,63 +2,61 @@
 
 ## Quick reference
 
-- **.NET 10.0**, **C# 13**, **library** (NuGet package: `FuzzyScorer`)
-- **xUnit** test project, 49 tests, `InternalsVisibleTo` grants access to `internal` members
+- **.NET 10.0**, **C# 13**, class library shipped as NuGet package `FuzzyScorer` (zero runtime dependencies)
+- **xUnit** test project, 49 tests, `InternalsVisibleTo` exposes `internal` members to tests
 - Solution uses **`.slnx`** format (not `.sln`)
-- **CI workflow**: `.github/workflows/publish.yml` — triggers on tag `v*.*.*`, builds, tests, packs, and pushes to NuGet
-- `GenerateDocumentationFile>true` — missing XML docs become compiler warnings
+- `GenerateDocumentationFile>true` — every public member needs `///` or it triggers CS1591 (keep the build at 0 warnings)
+- Releasing = bump `<Version>` in `FuzzyScorer/FuzzyScorer.csproj` and push a `v*.*.*` tag (or publish a GitHub release)
 
 ## Commands
 
 ```bash
 dotnet build                          # Debug build (0 warnings expected)
-dotnet build --configuration Release  # Release build
+dotnet build -c Release               # Release build
 dotnet test                           # Run all 49 tests
-dotnet test --filter "FullyQualifiedName~ScoringTests.Frequency_TypicalCase_ShouldCountCorrectly"  # Single test
-dotnet pack -c Release -o ./nupkgs    # Package (see also pack.ps1)
+dotnet test --filter "FullyQualifiedName~ScoringTests.Frequency_TypicalCase_ShouldCountCorrectly"  # single test
+dotnet pack -c Release -o ./nupkgs    # Package (see pack.ps1)
 ```
+
+## Gotchas
+
+- `nuget.config` registers a **local package source at `./nupkgs`** (plus GitHub Packages). A fresh clone has no `nupkgs/`, so `dotnet restore`/`build`/`test` fail with **NU1301** until you `mkdir nupkgs` (CI does this).
+- `Scorer.cs` holds the public class **`WordScorer`** — filename ≠ class name.
+- `ScoreAsync` maps `sensitivity` (0.0–1.0) to edit distance via **`Math.Round(sensitivity × 50)`** — not `ceil`.
 
 ## Project structure
 
 ```
-FuzzyScorer/
-├── FuzzyScorer.slnx
-├── FuzzyScorer/                     # Library — namespace `FuzzyScorer`
-│   ├── Scorer.cs                    # Static API: class `WordScorer` (note: filename ≠ class name)
-│   ├── WordScore.cs                 # Immutable POCO (Text, Score)
-│   ├── IFuzzyScorer.cs              # Async interface (DI-friendly)
-│   ├── FuzzyScorer.cs               # Instance impl of IFuzzyScorer
-│   ├── FuzzyScorerResult.cs         # Result: OriginalSize, CompressedSize, Errors
-│   └── ErrorEntry.cs                # ErrorEntry: ErrorText, RepetitionCount, LineNumbers
-├── FuzzyScorer.Tests/               # xUnit — namespace `FuzzyScorer.Tests`
-│   └── ScoringTests.cs
-└── nupkgs/                          # Local NuGet feed (see nuget.config)
+FuzzyScorer.slnx
+FuzzyScorer/                              # library — namespace `FuzzyScorer`
+  Scorer.cs                               # static `WordScorer` (all scoring/normalization logic)
+  FuzzyScorer.cs / IFuzzyScorer.cs        # async instance API + DI interface
+  WordScore.cs / FuzzyScorerResult.cs / ErrorEntry.cs  # immutable POCOs
+FuzzyScorer.Tests/ScoringTests.cs         # xUnit — namespace `FuzzyScorer.Tests`
+nupkgs/                                   # local NuGet feed (gitignored; must exist for restore)
 ```
 
 ## Conventions
 
-- **Naming**: PascalCase for public, `_camelCase` for private fields, camelCase for locals
-- **XML docs**: all public members MUST have `///` (generates CS1591 otherwise)
-- **Null safety**: `<Nullable>enable</Nullable>` — never return `null` from collection-returning methods
-- **Collections**: use LINQ (`.GroupBy`, `.Select`, `.ToList()`) over manual loops
-- **Strings**: `OrdinalIgnoreCase` comparisons, `ToLowerInvariant()` for culture-safety
-- **Immutability**: `WordScore`, `FuzzyScorerResult`, `ErrorEntry` are immutable (get-only properties, validated constructors)
+- XML docs (`///`) required on all public members; nullable enabled — never return `null` from collection-returning methods
+- `OrdinalIgnoreCase` comparisons; `ToLowerInvariant()` for culture-safe normalization
+- Prefer LINQ over manual loops; result types are immutable (get-only props, validated constructors)
+- `internal` helpers (`NormalizeAndExtractWords`, `BuildSimilarityGroups`, `GetWordGroups`, `WordNormalizationRegex`) are test entry points via `InternalsVisibleTo`
 
-## Security limits (on `WordScorer`)
+## Security limits (public constants on `WordScorer`)
 
-| Constant | Value | Checked in |
+| Constant | Value | Enforced in |
 |---|---|---|
-| `MaxInputLength` | 1,000,000 | `NormalizeAndExtractWords` |
-| `MaxWordsPerText` | 10,000 | `NormalizeAndExtractWords` |
+| `MaxInputLength` | 1,000,000 | `NormalizeAndExtractWords` (throws) |
+| `MaxWordsPerText` | 10,000 | `NormalizeAndExtractWords` (throws) |
 | `MaxWordLength` | 256 | `NormalizeAndExtractWords` (silently drops longer words) |
-| `MaxEditDistanceLimit` | 50 | `GroupSimilarWords`, `GetWordGroups` |
+| `MaxEditDistanceLimit` | 50 | `GroupSimilarWords`, `GetWordGroups` (throws) |
 
-## Key architecture notes
+## Architecture
 
-- **Two APIs**: static `WordScorer` (quick use) + instance `IFuzzyScorer`/`FuzzyScorer` (async, typo detection, DI)
-- `WordScorer.GetWordFrequencies` — exact case-insensitive counts
-- `WordScorer.GroupSimilarWords` — fuzzy grouping by Levenshtein distance
-- `IFuzzyScorer.ScoreAsync(string, double sensitivity, CancellationToken)` — sensitivity 0.0–1.0 maps linearly to `ceil(sensitivity × 50)` edit distance
-- `BuildSimilarityGroups`, `GetWordGroups`, `WordNormalizationRegex`, `NormalizeAndExtractWords` are `internal` (exposed to tests via `InternalsVisibleTo`)
-- Long words (>256 chars) are silently dropped (not an error)
-- `ErrorEntry` reports typos as any group member that is not the most-frequent word in its group
+- Two APIs: static `WordScorer` (sync, fire-and-forget) + `IFuzzyScorer`/`FuzzyScorer` (async typo detection, DI-friendly)
+- `GetWordFrequencies` = exact case-insensitive counts; `GroupSimilarWords` = fuzzy merge via Levenshtein
+- Grouping is **order-dependent**: the first occurrence becomes the group leader/representative
+- `ErrorEntry` = any group member that isn't the most-frequent word in its group (1-based line numbers)
+- CI: `.github/workflows/publish.yml` (tag `v*.*.*` or manual) and `publish-github.yml` (published release) both build → test → pack → push to NuGet + GitHub Packages
+- Related docs: `README.md` (API), `SECURITY.md` (threat model), `AI_RULES.md` (coding standards), `STRUCTURE.md` (dir rules — no new top-level folders without permission)
