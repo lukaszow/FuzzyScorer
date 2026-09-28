@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed duplicated text-normalization logic; `FuzzyScorer` now shares the parser with
   the static API, so line tracking and the word-length filter stay consistent.
+- Removed the local `./nupkgs` package source from `nuget.config`; fresh clones and CI no
+  longer fail restore with **NU1301**.
+- Bumped GitHub Actions (`actions/checkout@v7`, `actions/setup-dotnet@v6`).
 
 ## [1.1.2] - 2026-08-25
 

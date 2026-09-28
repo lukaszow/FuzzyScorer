@@ -23,7 +23,7 @@ dotnet pack -c Release -o ./nupkgs    # Package (see pack.ps1)
 
 ## Gotchas
 
-- `nuget.config` registers a **local package source at `./nupkgs`**. A fresh clone has no `nupkgs/`, so `dotnet restore`/`build`/`test` fail with **NU1301** until you `mkdir nupkgs` (CI creates it). `nupkgs/` is gitignored.
+- No custom NuGet sources: `nuget.config` is intentionally empty, so restore uses the default nuget.org source. `nupkgs/` is only the gitignored pack output (`dotnet pack -o ./nupkgs`), not a registered feed.
 - `WordScorer.cs` holds the public class **`WordScorer`** (renamed from `Scorer.cs` in v2.0.0).
 - `ScoreAsync` maps `sensitivity` (0.0–1.0) to edit distance via **`Math.Round(sensitivity × 50)`** — not `ceil`.
 - Similarity grouping is bounded by `MaxSimilarityComparisons` (10,000,000); inputs with many distinct words throw `ArgumentException` instead of degrading.
@@ -37,7 +37,7 @@ FuzzyScorer/                              # library — namespace `FuzzyScorer`
   FuzzyScorer.cs / IFuzzyScorer.cs        # async instance API + DI interface
   WordScore.cs / FuzzyScorerResult.cs / ErrorEntry.cs  # immutable POCOs
 FuzzyScorer.Tests/ScoringTests.cs         # xUnit — namespace `FuzzyScorer.Tests`
-nupkgs/                                   # local NuGet feed (gitignored; must exist for restore)
+nupkgs/                                   # local pack output (gitignored; not a package source)
 ```
 
 ## Conventions

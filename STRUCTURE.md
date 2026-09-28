@@ -13,7 +13,7 @@ This file documents the project structure and architectural patterns for the `Fu
 ├── README.md                    # Project documentation
 ├── SECURITY.md                  # Security policy and threat model
 ├── DEVELOPMENT.md               # Development notes and guidelines
-├── nuget.config                 # Local NuGet source configuration
+├── nuget.config                 # NuGet configuration (default nuget.org source)
 ├── pack.ps1                     # Script to build and pack NuGet package
 ├── nupkgs/                      # Output directory for built .nupkg files
 ├── FuzzyScorer/                 # Source code directory
