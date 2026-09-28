@@ -24,8 +24,7 @@ namespace FuzzyScorer
         /// <exception cref="ArgumentException">Thrown if score is negative.</exception>
         public WordScore(string text, int score)
         {
-            if (text == null)
-                throw new ArgumentException("Text cannot be null.", nameof(text));
+            ArgumentNullException.ThrowIfNull(text);
             if (score < 0)
                 throw new ArgumentException("Score cannot be negative.", nameof(score));
 

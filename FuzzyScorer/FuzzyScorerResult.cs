@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FuzzyScorer
 {
@@ -32,10 +33,9 @@ namespace FuzzyScorer
         /// <param name="errors">List of detected error entries.</param>
         /// <exception cref="ArgumentNullException">Thrown if errors is null.</exception>
         /// <exception cref="ArgumentException">Thrown if originalSize or compressedSize is negative.</exception>
-        public FuzzyScorerResult(int originalSize, int compressedSize, List<ErrorEntry> errors)
+        public FuzzyScorerResult(int originalSize, int compressedSize, IEnumerable<ErrorEntry> errors)
         {
-            if (errors == null)
-                throw new ArgumentNullException(nameof(errors));
+            ArgumentNullException.ThrowIfNull(errors);
             if (originalSize < 0)
                 throw new ArgumentException("OriginalSize cannot be negative.", nameof(originalSize));
             if (compressedSize < 0)
@@ -43,7 +43,7 @@ namespace FuzzyScorer
 
             OriginalSize = originalSize;
             CompressedSize = compressedSize;
-            Errors = errors.AsReadOnly();
+            Errors = errors.ToList().AsReadOnly();
         }
     }
 }

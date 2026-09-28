@@ -537,5 +537,77 @@ namespace FuzzyScorer.Tests
         }
 
         #endregion
+
+        #region Security & Validation Tests
+
+        [Fact]
+        public void AreWordsSimilar_NullWord_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => WordScorer.AreWordsSimilar(null!, "apple", 1));
+            Assert.Throws<ArgumentNullException>(() => WordScorer.AreWordsSimilar("apple", null!, 1));
+        }
+
+        [Fact]
+        public void AreWordsSimilar_InvalidDistance_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentException>(() => WordScorer.AreWordsSimilar("a", "b", -1));
+            Assert.Throws<ArgumentException>(() => WordScorer.AreWordsSimilar("a", "b", WordScorer.MaxEditDistanceLimit + 1));
+        }
+
+        [Fact]
+        public void AreWordsSimilar_WithinThreshold_ReturnsTrue()
+        {
+            Assert.True(WordScorer.AreWordsSimilar("kitten", "sitting", 3));
+            Assert.False(WordScorer.AreWordsSimilar("kitten", "sitting", 2));
+        }
+
+        [Fact]
+        public void GroupWordsBySimilarity_NullList_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                WordScorer.GroupWordsBySimilarity(null!, 1, CancellationToken.None));
+        }
+
+        [Fact]
+        public void GroupWordsBySimilarity_InvalidDistance_ThrowsArgumentException()
+        {
+            var words = new List<string> { "apple" };
+
+            Assert.Throws<ArgumentException>(() =>
+                WordScorer.GroupWordsBySimilarity(words, -1, CancellationToken.None));
+            Assert.Throws<ArgumentException>(() =>
+                WordScorer.GroupWordsBySimilarity(words, WordScorer.MaxEditDistanceLimit + 1, CancellationToken.None));
+        }
+
+        [Fact]
+        public void GroupSimilarWords_EmptyInput_InvalidDistance_StillThrows()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                WordScorer.GroupSimilarWords("   ", WordScorer.MaxEditDistanceLimit + 1));
+        }
+
+        [Fact]
+        public void Similarity_ComparisonBudgetExceeded_ThrowsArgumentException()
+        {
+            var words = string.Join(" ", Enumerable.Range(0, 5000).Select(i => "w" + i));
+
+            var ex = Assert.Throws<ArgumentException>(() => WordScorer.GroupSimilarWords(words, 0));
+            Assert.Contains("comparisons", ex.Message);
+        }
+
+        [Fact]
+        public void Similarity_LongWordsBeyondCutoff_DoNotGroup()
+        {
+            var baseWord = new string('a', 256);
+            var nearMiss = new string('a', 255) + "b";
+            var farMiss = new string('a', 216) + new string('b', 40);
+            var input = $"{baseWord} {nearMiss} {farMiss}";
+
+            var results = WordScorer.GroupSimilarWords(input, 1);
+
+            Assert.Equal(2, results.Count);
+        }
+
+        #endregion
     }
 }

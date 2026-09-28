@@ -33,12 +33,10 @@ namespace FuzzyScorer
         /// <param name="lineNumbers">The 1-based line numbers where the word appears.</param>
         /// <exception cref="ArgumentNullException">Thrown if errorText or lineNumbers is null.</exception>
         /// <exception cref="ArgumentException">Thrown if repetitionCount is negative.</exception>
-        public ErrorEntry(string errorText, int repetitionCount, List<int> lineNumbers)
+        public ErrorEntry(string errorText, int repetitionCount, IEnumerable<int> lineNumbers)
         {
-            if (errorText == null)
-                throw new ArgumentNullException(nameof(errorText));
-            if (lineNumbers == null)
-                throw new ArgumentNullException(nameof(lineNumbers));
+            ArgumentNullException.ThrowIfNull(errorText);
+            ArgumentNullException.ThrowIfNull(lineNumbers);
             if (repetitionCount < 0)
                 throw new ArgumentException("RepetitionCount cannot be negative.", nameof(repetitionCount));
 

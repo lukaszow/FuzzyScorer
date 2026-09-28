@@ -31,6 +31,51 @@ Simply mentioning or pasting the bootstrap prompt ensures the agent is fully ali
 
 ## 🔒 Security & Changelog
 
+### Version 2.0.0 - Security Hardening & API Cleanup (2026-09-28)
+
+**Breaking Changes:**
+
+1. **Return types** — static list-returning APIs now expose `IReadOnlyList<T>` instead of
+   `List<T>` (`GetWordFrequencies`, `GroupSimilarWords`, `GroupWordsBySimilarity`).
+2. **Constructor signatures** — `FuzzyScorerResult` and `ErrorEntry` accept `IEnumerable<T>`.
+3. **`GroupWordsBySimilarity`** now takes `IEnumerable<string>` and validates its inputs.
+4. **`AreWordsSimilar`** now throws on null arguments and invalid `maxEditDistance`.
+5. **`WordScore`** throws `ArgumentNullException` (was `ArgumentException`) for null text.
+
+**Security Fixes:**
+
+- **Banded Levenshtein with cutoff** — replaces the full-matrix implementation; returns
+  early when the length difference or minimum row cost exceeds the threshold, and uses
+  two rows (`O(min(n,m))` memory) instead of a `(n+1) × (m+1)` matrix.
+- **Comparison budget** — new `WordScorer.MaxSimilarityComparisons` (10,000,000) caps
+  pairwise comparisons in `BuildSimilarityGroups`; exceeding it throws instead of
+  allowing quadratic-time degradation.
+- Validation moved before empty-input early returns in `GroupSimilarWords`/`GetWordGroups`.
+
+**Architecture:**
+
+- Single normalization source of truth: `NormalizeAndExtractWordsWithLines` is now used by
+  both the static API and `FuzzyScorer.Analyze` (removed the duplicated parser and the
+  second regex pass in `BuildWordLineMap`).
+- Renamed `Scorer.cs` → `WordScorer.cs` to match the public type.
+
+**Documentation:**
+
+- README translated to English; Polish kept as `README.pl.md`.
+- Corrected normalization examples and complexity claims in `SECURITY.md`.
+
+**Testing:**
+- 57 unit tests pass (8 new security/validation tests)
+- Build: Clean (0 warnings, 0 errors)
+
+### Version 1.1.2 - Packaging & Docs (2026-08-25)
+
+- Polish README and package metadata refinements; no code changes.
+
+### Version 1.1.1 - Release-based Publishing (2026-07)
+
+- Added release-triggered GitHub Packages publishing workflow.
+
 ### Version 1.1.0 - Async API & Error Detection (2026-07-10)
 
 **Implemented Features:**

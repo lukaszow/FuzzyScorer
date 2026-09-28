@@ -35,3 +35,7 @@ Generated\ Files/
 
 # Mac
 .DS_Store
+.aider*
+
+# Local NuGet feed (pack output)
+nupkgs/

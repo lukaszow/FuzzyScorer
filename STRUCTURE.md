@@ -18,13 +18,12 @@ This file documents the project structure and architectural patterns for the `Fu
 ├── nupkgs/                      # Output directory for built .nupkg files
 ├── FuzzyScorer/                 # Source code directory
 │   ├── FuzzyScorer.csproj       # .NET 10.0 project file
-│   ├── Scorer.cs                # Core word frequency and similarity logic
+│   ├── WordScorer.cs            # Static word frequency and similarity API
 │   ├── WordScore.cs             # Data model for word analysis (immutable)
 │   ├── IFuzzyScorer.cs          # Interface for async fuzzy scoring
 │   ├── FuzzyScorer.cs           # Instance implementation of IFuzzyScorer
 │   ├── FuzzyScorerResult.cs     # Result model (sizes + error list)
-│   ├── ErrorEntry.cs            # Error entry model (text, count, lines)
-│   └── Properties/              # Project assembly information
+│   └── ErrorEntry.cs            # Error entry model (text, count, lines)
 └── FuzzyScorer.Tests/           # Unit test project (xUnit)
     ├── FuzzyScorer.Tests.csproj
     └── ScoringTests.cs          # Unit tests for scoring logic

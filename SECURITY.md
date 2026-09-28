@@ -12,9 +12,11 @@ All input text is validated to prevent denial-of-service attacks:
 
 | Limit | Value | Rationale |
 |-------|-------|-----------|
+| **MaxInputLength** | 1,000,000 characters | Hard cap on the raw input size |
 | **MaxWordsPerText** | 10,000 | Prevents memory exhaustion from oversized inputs |
 | **MaxWordLength** | 256 characters | Limits processing overhead per word |
-| **MaxEditDistanceLimit** | 50 | Prevents quadratic complexity in grouping algorithm |
+| **MaxEditDistanceLimit** | 50 | Upper bound for the caller-supplied similarity threshold |
+| **MaxSimilarityComparisons** | 10,000,000 | Hard budget on pairwise edit-distance comparisons in grouping |
 
 **Behavior**: Input exceeding limits raises `ArgumentException` with descriptive message.
 
@@ -28,20 +30,40 @@ WordScorer.GetWordFrequencies(hugeText);                        // ArgumentExcep
 WordScorer.GroupSimilarWords(text, maxEditDistance: 100);       // ArgumentException: must be ≤ 50
 ```
 
+### Bounded Algorithmic Complexity
+
+The similarity grouping is the only super-linear path in the library. It is bounded on
+three independent axes:
+
+1. **Distinct-word budget** — `MaxWordsPerText` (10,000) caps the number of input words.
+2. **Comparison budget** — `MaxSimilarityComparisons` (10,000,000) caps the total number
+   of `(word, group-leader)` comparisons. Exceeding it throws `ArgumentException` instead
+   of degrading silently. This bounds the otherwise quadratic `O(N²)` grouping.
+3. **Banded edit distance** — the Levenshtein routine short-circuits when the length
+   difference exceeds the threshold, when the minimum row cost exceeds the threshold,
+   and only evaluates a diagonal band of width `2 × maxEditDistance + 1`. It uses two
+   reusable rows (`O(min(n, m))` memory) instead of a full `(n+1) × (m+1)` matrix.
+
+Together these prevent the cubic-time / unbounded-allocation behaviour that a naive
+Levenshtein implementation would allow on adversarial input.
+
 ### Input Normalization
 
-Before processing, input is normalized to remove attack vectors:
+Input is normalized to remove attack vectors:
 
-1. **Character Filtering**: Non-alphanumeric characters removed (except spaces, hyphens)
-   - Prevents injection of invisible/control characters
-   - Example: `"hello\x00world"` → `"hello world"`
+1. **Character Filtering**: characters that are not Unicode letters (`\p{L}`), Unicode
+   digits (`\p{N}`), whitespace (`\s`), or hyphens (`-`) are removed entirely.
+   - Prevents injection of invisible/control characters.
+   - Example: `"hello\x00world"` → `"helloworld"` (the control character is deleted).
+   - Example: `"don't"` → `"dont"` (apostrophes are not part of the allowed set).
 
-2. **Whitespace Handling**: Normalizes `\t`, `\n`, `\r` to space
-   - Cross-platform consistency (Windows, Linux, macOS)
+2. **Whitespace Handling**: input is split on spaces, `\t`, `\n`, and `\r`
+   (whitespace is used as a delimiter, it is not rewritten in the source string).
+   - Cross-platform consistency (Windows, Linux, macOS).
 
-3. **Word Extraction**: Individual words validated for length and content
-   - Empty words discarded
-   - Words > 256 characters rejected
+3. **Word Extraction**: individual words are validated for length and content.
+   - Empty words discarded.
+   - Words longer than 256 characters are silently dropped (not an error).
 
 ### Immutable Objects
 
@@ -107,8 +129,8 @@ Security audit confirms:
 | Threat | Mitigation |
 |--------|-----------|
 | **DoS via Large Input** | Word/character count limits + `MaxWordsPerText` |
-| **DoS via Complexity** | Levenshtein distance capped + similarity threshold limit |
-| **Memory Exhaustion** | Input size validation before processing |
+| **DoS via Complexity** | Comparison budget (`MaxSimilarityComparisons`) + banded Levenshtein capped at `MaxEditDistanceLimit` |
+| **Memory Exhaustion** | Input size validation before processing; edit distance uses two rows, not a full matrix |
 | **Infinite Loops** | `CancellationToken` support + no dynamic recursion |
 | **Malicious Characters** | Input normalization (non-alphanumeric removal) |
 | **Object Mutation** | Immutable `WordScore` design |
@@ -126,8 +148,11 @@ Security audit confirms:
 ## Dependency Management
 
 ### Direct Dependencies
-- **None** — FuzzyScorer targets `net10.0` with zero NuGet package references.
-  Only the .NET runtime BCL is required.
+- **Runtime: none** — FuzzyScorer targets `net10.0` and ships zero runtime package
+  references. Only the .NET runtime BCL is required.
+- **Build-time only**: `Microsoft.SourceLink.GitHub` (`PrivateAssets="all"`) is used to
+  embed source-control metadata. It is not shipped, does not flow to consumers, and is
+  not loaded at runtime.
 
 ### Indirect Dependencies
 Run vulnerability scan regularly:
@@ -151,6 +176,8 @@ No automatic detection in NuGet; recommend SBOM tools:
 | 2026-07-14 | Unsafe code / P/Invoke | **PASS** — no `unsafe`, `DllImport`, `BinaryFormatter`, or `Marshal` |
 | 2026-07-14 | Direct dependency audit (csproj vs docs) | **PASS** — zero `PackageReference` entries; docs corrected |
 | 2026-07-14 | .gitignore sensitive exclusions | **PASS** — no patterns for credential files |
+| 2026-09-28 | Algorithmic DoS review (grouping complexity) | **FIXED** — comparison budget + banded Levenshtein with cutoff added |
+| 2026-09-28 | Public API input-validation audit | **FIXED** — null/range guards added to `GroupWordsBySimilarity`, `AreWordsSimilar`; validation moved before early returns |
 
 ## Usage Guidelines
 
@@ -236,16 +263,18 @@ Use this checklist for code reviews and security assessments:
 
 If you discover a security vulnerability, **please do NOT open a public GitHub issue**.
 
-Instead:
-1. Email relevant security contact with:
-   - Vulnerability description
-   - Severity assessment (Critical/High/Medium/Low)
-   - Proof-of-concept (if possible)
-   - Steps to reproduce
+Preferred channel — **GitHub Private Vulnerability Reporting**:
+go to the repository's *Security* tab → *Report a vulnerability*. This keeps the report
+private and lets us coordinate a fix.
 
-2. Allow 72 hours for initial assessment
+Alternative channel — **email**: `lukasz.stilger@gmail.com` with:
+1. Vulnerability description
+2. Severity assessment (Critical/High/Medium/Low)
+3. Proof-of-concept (if possible)
+4. Steps to reproduce
 
-3. Coordinate disclosure timeline (typically 30–90 days)
+Allow 72 hours for initial assessment, then coordinate a disclosure timeline
+(typically 30–90 days).
 
 ## Future Improvements
 
@@ -267,5 +296,5 @@ Planned security enhancements:
 
 ---
 
-**Last Updated**: 2026-02-17  
-**Version**: 1.1 (Security Hardening Release)
+**Last Updated**: 2026-09-28  
+**Version**: 2.0 (Algorithmic DoS hardening release)

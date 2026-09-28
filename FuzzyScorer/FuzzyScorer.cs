@@ -44,7 +44,8 @@ namespace FuzzyScorer
 
             int maxEditDistance = (int)Math.Round(sensitivity * WordScorer.MaxEditDistanceLimit);
 
-            var allWords = WordScorer.NormalizeAndExtractWords(inputText, cancellationToken);
+            var wordsWithLines = WordScorer.NormalizeAndExtractWordsWithLines(inputText, cancellationToken);
+            var allWords = wordsWithLines.Select(entry => entry.Word).ToList();
             int originalSize = allWords.Count;
 
             var freqDict = allWords
@@ -54,14 +55,14 @@ namespace FuzzyScorer
             var groups = WordScorer.BuildSimilarityGroups(allWords, maxEditDistance, cancellationToken);
             int compressedSize = groups.Count;
 
-            var wordLineMap = BuildWordLineMap(inputText, cancellationToken);
+            var wordLineMap = BuildWordLineMap(wordsWithLines);
             var errors = DetectErrors(groups, freqDict, wordLineMap);
 
             return new FuzzyScorerResult(originalSize, compressedSize, errors);
         }
 
         private static List<ErrorEntry> DetectErrors(
-            List<List<string>> groups,
+            IReadOnlyList<IReadOnlyList<string>> groups,
             Dictionary<string, int> freqDict,
             Dictionary<string, List<int>> wordLineMap)
         {
@@ -101,24 +102,19 @@ namespace FuzzyScorer
             return errors;
         }
 
-        private static Dictionary<string, List<int>> BuildWordLineMap(string inputText, CancellationToken cancellationToken)
+        private static Dictionary<string, List<int>> BuildWordLineMap(List<(string Word, int LineNumber)> wordsWithLines)
         {
             var map = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
-            var lines = inputText.Split('\n');
 
-            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
+            foreach (var (word, lineNumber) in wordsWithLines)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var normalized = WordScorer.WordNormalizationRegex.Replace(lines[lineIndex], "");
-                var words = normalized.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-
-                int lineNumber = lineIndex + 1;
-                foreach (var word in words)
+                if (!map.TryGetValue(word, out var lines))
                 {
-                    if (!map.ContainsKey(word))
-                        map[word] = new List<int>();
-                    map[word].Add(lineNumber);
+                    lines = new List<int>();
+                    map[word] = lines;
                 }
+
+                lines.Add(lineNumber);
             }
 
             return map;

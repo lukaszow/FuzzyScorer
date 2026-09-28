@@ -5,35 +5,58 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 2.0.1). Leave empty to use the csproj Version."
+        required: false
+        type: string
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - uses: actions/setup-dotnet@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
 
-      - name: Create local package directory
-        run: mkdir -p nupkgs
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Using version: '${VERSION:-<from csproj>}'"
+
+      - name: Restore
+        run: dotnet restore
 
       - name: Build
-        run: dotnet build --configuration Release
+        run: dotnet build --configuration Release --no-restore ${{ steps.version.outputs.value != '' && format('-p:Version={0}', steps.version.outputs.value) || '' }}
 
       - name: Test
         run: dotnet test --configuration Release --no-build
 
       - name: Pack
-        run: dotnet pack --configuration Release --no-build -o ./nupkgs
+        run: dotnet pack --configuration Release --no-build -o ./nupkgs ${{ steps.version.outputs.value != '' && format('-p:Version={0}', steps.version.outputs.value) || '' }}
 
-      - name: Push to NuGet
-        run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Push package to NuGet
+        run: dotnet nuget push "./nupkgs/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
-      - name: Push to GitHub Packages
-        run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.GITHUB_TOKEN }} --source https://nuget.pkg.github.com/lukaszow/index.json --skip-duplicate
+      - name: Push symbols to NuGet
+        run: dotnet nuget push "./nupkgs/*.snupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Push package to GitHub Packages
+        run: dotnet nuget push "./nupkgs/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source https://nuget.pkg.github.com/lukaszow/index.json --skip-duplicate

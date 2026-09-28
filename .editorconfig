@@ -1,0 +1,20 @@
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.cs]
+indent_size = 4
+
+[*.csproj]
+indent_size = 2
+
+# Test method names intentionally follow the Method_Scenario_Expectation convention.
+[FuzzyScorer.Tests/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+# Tests deliberately exercise the IFuzzyScorer abstraction.
+dotnet_diagnostic.CA1859.severity = none
