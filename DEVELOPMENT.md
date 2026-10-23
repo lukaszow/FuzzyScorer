@@ -31,6 +31,36 @@ Simply mentioning or pasting the bootstrap prompt ensures the agent is fully ali
 
 ## 🔒 Security & Changelog
 
+### Version 2.1.0 - Normalization & Typo-Selection Correctness (2026-10-23)
+
+Behavioral release on top of 2.0.0; no API surface changes. Full details in
+[`CHANGELOG.md`](CHANGELOG.md).
+
+**Normalization:**
+
+1. Unicode NFC; punctuation becomes a separator (was deleted), so `"hello,world"`
+   now yields two words.
+2. All Unicode whitespace splits words (NBSP, `\v`, `\f`, U+2028/2029) — previously
+   only space, `\t`, `\n`, `\r` did.
+3. Apostrophes are removed without splitting (`"don't"` → `"dont"`).
+4. Leading/trailing hyphens are trimmed; interior hyphens preserved.
+
+**Typo detection:**
+
+- Deterministic tie-break: most frequent → longest → ordinal (was: first occurrence).
+- One `ErrorEntry` per distinct spelling; `RepetitionCount` aggregates occurrences.
+- Errors sorted by line, then text; distinct line numbers per entry.
+
+**Validation:**
+
+- `maxEditDistance` out of range now throws `ArgumentOutOfRangeException`
+  (still an `ArgumentException`, so existing handlers keep working).
+- Null elements in `GroupWordsBySimilarity` throw `ArgumentException` instead of
+  `NullReferenceException`.
+
+**Testing:** 78 unit tests (21 new regression tests in `CorrectnessTests.cs`);
+build and `dotnet format` clean (0 warnings).
+
 ### Version 2.0.0 - Security Hardening & API Cleanup (2026-09-28)
 
 **Breaking Changes:**

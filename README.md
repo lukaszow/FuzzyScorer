@@ -53,8 +53,9 @@ That is the whole library in one call — no configuration or extra setup.
 
 ## How it works
 
-1. **Normalization** — the text is cleaned (characters that are not Unicode letters,
-   digits, hyphens, or whitespace are removed) and split into words on whitespace.
+1. **Normalization** — the text is normalized to Unicode form C, punctuation is
+   replaced with spaces, and words are split on any Unicode whitespace; apostrophes
+   are removed and edge hyphens trimmed.
 2. **Counting** — words are compared case-insensitively.
 3. **Merging** — words whose Levenshtein distance is ≤ `maxEditDistance` are grouped, and
    the first occurrence becomes the group representative.
@@ -106,7 +107,8 @@ var results = WordScorer.GroupSimilarWords("apple aple apple", maxEditDistance: 
 #### `AreWordsSimilar(string a, string b, int maxEditDistance)`
 
 Quickly checks whether `b` is within distance ≤ `maxEditDistance` of `a`
-(case-insensitive).
+(case-insensitive). Throws `ArgumentNullException` for null input and
+`ArgumentOutOfRangeException` when `maxEditDistance` is outside 0–50.
 
 ```csharp
 bool isTypo = WordScorer.AreWordsSimilar("aple", "apple", maxEditDistance: 1); // true
@@ -162,17 +164,23 @@ foreach (var error in result.Errors)
 Returns `FuzzyScorerResult`:
 - **OriginalSize** — total number of words after normalization
 - **CompressedSize** — number of distinct groups after merging
-- **Errors** — detected potential typos: every group member that is not the most frequent
-  word in its group, reported as an `ErrorEntry` (`ErrorText`, `RepetitionCount`, 1-based
-  `LineNumbers`)
+- **Errors** — detected potential typos: every distinct group member that is not the
+  group's representative, reported as an `ErrorEntry` (`ErrorText`, `RepetitionCount`,
+  1-based `LineNumbers`), sorted by line. The representative is the most frequent word;
+  ties are broken by the longest variant, then ordinal order.
 
 ### Normalization rules
 
 Before analysis the text is:
-- Cleaned of everything that is not a Unicode letter, digit, hyphen, or whitespace
-  (`"hello!"` → `"hello"`, `"café"` is preserved, `"well-known"` is preserved,
-  `"don't"` → `"dont"`)
-- Split into words on whitespace
+- Normalized to Unicode **form C** (canonical composition) — `"café"` written with a
+  combining accent matches the precomposed form
+- Stripped of control and punctuation characters, which are replaced with spaces
+  (`"hello,world"` → `"hello world"`, `"foo.bar"` → `"foo bar"`); apostrophes are
+  removed without splitting the word (`"don't"` → `"dont"`, `"John's"` → `"johns"`)
+- Split into words on **any** Unicode whitespace (spaces, tabs, non-breaking spaces,
+  line/paragraph separators, …)
+- Trimmed of leading/trailing hyphens; interior hyphens are preserved
+  (`"well-known"` is preserved)
 - Compared case-insensitively
 
 ## Limits & security
@@ -204,8 +212,9 @@ No. It is structural (Levenshtein), not semantic. `"TIGER"` and `"TlGER"` match;
 `"cat"` and `"dog"` never do.
 
 **How do I detect typos?**
-Use `IFuzzyScorer.ScoreAsync` — it reports every group member that is not the most frequent
-word in its group, with 1-based line numbers.
+Use `IFuzzyScorer.ScoreAsync` — it reports every distinct spelling that is not the
+group's representative (most frequent, then longest, then ordinal), with 1-based line
+numbers.
 
 **What happens to words longer than 256 characters?**
 They are silently dropped.

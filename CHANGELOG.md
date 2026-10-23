@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-23
+
+### Changed behavior
+
+- **Punctuation now separates words.** It is replaced with a space, so `"hello,world"`
+  yields two words (`hello`, `world`); previously punctuation was deleted and the
+  tokens were glued together.
+- **All Unicode whitespace separates words.** Tab, form feed, vertical tab,
+  non-breaking space (`U+00A0`), and line/paragraph separators are handled; previously
+  only space, `\t`, `\n`, and `\r` acted as separators.
+- **Unicode input is normalized to form C (NFC).** Precomposed and decomposed
+  diacritics (`"café"` vs `"cafe"` + `U+0301`) are the same word.
+- **Apostrophes no longer split words.** They are removed instead
+  (`"don't"` → `"dont"`, `"John's"` → `"johns"`).
+- **Leading and trailing hyphens are trimmed** (`"--foo--"` → `"foo"`); interior
+  hyphens are preserved (`"well-known"`).
+- **Deterministic representative on frequency ties.** The group representative is the
+  most frequent word; ties are broken by the longest variant, then ordinal order.
+  Previously the first occurrence won, so a typo could be reported as the correct form.
+- **Each distinct misspelling is reported once** in `FuzzyScorerResult.Errors`;
+  `RepetitionCount` aggregates all occurrences. Previously a variant occurring N times
+  produced N identical entries.
+- **Errors are sorted by line number** (then by text).
+- `maxEditDistance` outside 0–50 now throws `ArgumentOutOfRangeException` (was
+  `ArgumentException`). It derives from `ArgumentException`, so existing catch blocks
+  keep working. The comparison-budget overflow still throws `ArgumentException`.
+
+### Fixed
+
+- `GroupWordsBySimilarity` / `BuildSimilarityGroups` threw `NullReferenceException`
+  for a null element in the word collection; they now throw `ArgumentException`.
+- `ErrorEntry.LineNumbers` contained duplicate line numbers when a word appeared more
+  than once on the same line.
+
+### Tests
+
+- Added `FuzzyScorer.Tests/CorrectnessTests.cs` (21 regression tests); total 78.
+
 ## [2.0.0] - 2026-09-28
 
 ### Changed (breaking)

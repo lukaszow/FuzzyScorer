@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>FuzzyScorer</PackageId>
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
     <Title>FuzzyScorer — Fuzzy Text Matching &amp; Word Grouping for .NET</Title>
     <Authors>Lukaszow</Authors>
     <Description>
@@ -27,7 +27,7 @@
     <PackageProjectUrl>https://github.com/lukaszow/FuzzyScorer</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>2.0.0 — Security hardening: banded Levenshtein with cutoff, MaxSimilarityComparisons budget, input validation on public APIs, IReadOnlyList return types, SourceLink.</PackageReleaseNotes>
+    <PackageReleaseNotes>2.1.0 — Correctness fixes on top of 2.0.0: Unicode NFC normalization, punctuation as word separator, all Unicode whitespace splits words, apostrophes removed without splitting, edge hyphens trimmed, deterministic typo representative (most frequent → longest → ordinal), one entry per distinct misspelling sorted by line, ArgumentOutOfRangeException for invalid maxEditDistance.</PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

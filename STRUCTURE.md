@@ -26,7 +26,8 @@ This file documents the project structure and architectural patterns for the `Fu
 │   └── ErrorEntry.cs            # Error entry model (text, count, lines)
 └── FuzzyScorer.Tests/           # Unit test project (xUnit)
     ├── FuzzyScorer.Tests.csproj
-    └── ScoringTests.cs          # Unit tests for scoring logic
+    ├── ScoringTests.cs          # Unit tests for scoring logic
+    └── CorrectnessTests.cs      # Normalization, validation, tie-break regressions
 ```
 
 ## Architecture & Guidelines
@@ -60,7 +61,9 @@ The `WordScorer` class enforces security limits to prevent DoS attacks:
 
 ### Normalization
 Input text is automatically normalized via `NormalizeAndExtractWords()` method:
-- Removes non-alphanumeric characters (preserves letters, digits, hyphens, spaces)
+- Normalizes Unicode to form C (canonical composition)
+- Replaces punctuation and control characters with spaces (preserves letters, digits, apostrophes, hyphens)
+- Splits on any Unicode whitespace; removes apostrophes and trims edge hyphens
 - Trims and validates individual words
 - Throws `ArgumentException` if limits are exceeded
 

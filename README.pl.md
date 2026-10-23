@@ -49,7 +49,7 @@ To cała biblioteka w jednym wywołaniu — bez konfiguracji i dodatkowych ustaw
 
 ## Jak to działa
 
-1. **Normalizacja** — tekst jest czyszczony (usuwane są znaki niebędące literami, cyframi, myślnikami lub spacjami), a słowa są dzielone na podstawie białych znaków.
+1. **Normalizacja** — tekst jest normalizowany do formy C Unicode, znaki interpunkcyjne są zastępowane spacjami, a słowa są dzielone na podstawie dowolnych białych znaków Unicode; apostrofy są usuwane, a myślniki na krańcach przycinane.
 2. **Zliczanie** — słowa są porównywane bez rozróżniania wielkości liter.
 3. **Łączenie** — słowa o odległości Levenshteina ≤ `maxEditDistance` są grupowane, a pierwsze wystąpienie staje się reprezentantem grupy.
 
@@ -91,7 +91,7 @@ var results = WordScorer.GroupSimilarWords("apple aple apple", maxEditDistance: 
 
 #### `AreWordsSimilar(string a, string b, int maxEditDistance)`
 
-Szybkie sprawdzenie, czy `b` jest w odległości ≤ `maxEditDistance` od `a` (bez rozróżniania wielkości liter). Rzuca `ArgumentNullException` dla `null` i `ArgumentException` dla odległości spoza zakresu 0–50.
+Szybkie sprawdzenie, czy `b` jest w odległości ≤ `maxEditDistance` od `a` (bez rozróżniania wielkości liter). Rzuca `ArgumentNullException` dla `null` i `ArgumentOutOfRangeException` dla odległości spoza zakresu 0-50.
 
 ```csharp
 bool isTypo = WordScorer.AreWordsSimilar("aple", "apple", maxEditDistance: 1); // true
@@ -144,13 +144,15 @@ foreach (var error in result.Errors)
 Zwraca `FuzzyScorerResult`:
 - **OriginalSize** — całkowita liczba słów po normalizacji
 - **CompressedSize** — liczba unikalnych grup po łączeniu
-- **Errors** — wykryte potencjalne literówki: każdy członek grupy, który nie jest najczęstszym słowem w grupie, raportowany jako `ErrorEntry` (`ErrorText`, `RepetitionCount`, 1‑based `LineNumbers`)
+- **Errors** — wykryte potencjalne literówki: każda odrębna pisownia, która nie jest reprezentantem grupy, raportowana jako `ErrorEntry` (`ErrorText`, `RepetitionCount`, 1‑based `LineNumbers`), posortowana według linii. Reprezentant to najczęstsze słowo; przy remisie wygrywa najdłuższy wariant, a następnie kolejność porządkowa.
 
 ### Reguły normalizacji
 
 Przed analizą tekst jest:
-- Oczyszczany z wszystkiego, co nie jest literą Unicode, cyfrą, myślnikiem lub białym znakiem (`"hello!"` → `"hello"`, `"café"` pozostaje, `"well-known"` pozostaje, `"don't"` → `"dont"`)
-- Dzielony na słowa na podstawie białych znaków
+- Normalizowany do **formy C** Unicode (kompozycja kanoniczna) — `"café"` zapisane z łączonym akcentem pasuje do formy prekomponowanej
+- Oczyszczany ze znaków kontrolnych i interpunkcyjnych, które są zastępowane spacjami (`"hello,world"` → `"hello world"`, `"foo.bar"` → `"foo bar"`); apostrofy są usuwane bez dzielenia słowa (`"don't"` → `"dont"`, `"John's"` → `"johns"`)
+- Dzielony na słowa na podstawie **dowolnych** białych znaków Unicode (spacje, tabulatory, twarde spacje, separatory linii/akapitu, …)
+- Przycinany z myślników na krańcach; myślniki wewnątrz są zachowywane (`"well-known"` pozostaje)
 - Porównywany bez rozróżniania wielkości liter
 
 ## Limity i bezpieczeństwo
@@ -172,7 +174,7 @@ Pełny model zagrożeń i proces zgłaszania: [SECURITY.md](SECURITY.md).
 Nie. Działa strukturalnie (Levenshtein), nie semantycznie. `"TIGER"` i `"TlGER"` pasują; `"cat"` i `"dog"` nigdy.
 
 **Jak wykrywać literówki?**
-Użyj `IFuzzyScorer.ScoreAsync` — raportuje każdego członka grupy, który nie jest najczęstszym słowem w grupie, z numerami linii (1‑based).
+Użyj `IFuzzyScorer.ScoreAsync` — raportuje każdą odrębną pisownię, która nie jest reprezentantem grupy (najczęstsze słowo, potem najdłuższe, potem kolejność porządkowa), z numerami linii (1‑based).
 
 **Co się dzieje ze słowami dłuższymi niż 256 znaków?**
 Są cicho pomijane.
