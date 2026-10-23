@@ -16,6 +16,7 @@ Użyj statycznej klasy `WordScorer` do szybkiej analizy częstotliwości/podobie
 - [Szybki start](#szybki-start)
 - [Jak to działa](#jak-to-działa)
 - [API](#api)
+- [Opcje](#opcje-fuzzyscoreroptions)
 - [Limity i bezpieczeństwo](#limity-i-bezpieczeństwo)
 - [Wydajność](#wydajność)
 - [FAQ](#faq)
@@ -40,7 +41,7 @@ string text = "apple aple Apple";
 var results = WordScorer.GroupSimilarWords(text, maxEditDistance: 1);
 
 foreach (var word in results)
-    Console.WriteLine($"{word.Text}: {word.Score}");
+    Console.WriteLine($"{word.Text}: {word.Count}");
 
 // Wynik:
 // apple: 3
@@ -67,7 +68,7 @@ To cała biblioteka w jednym wywołaniu — bez konfiguracji i dodatkowych ustaw
 
 ### Statyczne metody (`WordScorer`)
 
-Wszystkie statyczne metody zwracają niezmienne instancje `WordScore` (tekst słowa + wynik) i nigdy nie zwracają `null`; kolekcje wyników są eksponowane jako `IReadOnlyList<T>`.
+Wszystkie statyczne metody zwracają niezmienne instancje `WordScore` (tekst słowa + liczba wystąpień) i nigdy nie zwracają `null`; kolekcje wyników są eksponowane jako `IReadOnlyList<T>`. Każda metoda ma też przeciążenie przyjmujące [`FuzzyScorerOptions`](#opcje-fuzzyscoreroptions).
 
 #### `GetWordFrequencies(string? text[, CancellationToken ct])`
 
@@ -84,6 +85,7 @@ Zliczanie **plus** łączenie literówek na podstawie odległości Levenshteina.
 
 - **Pierwsze wystąpienie** słowa staje się reprezentantem grupy — wyniki zależą od kolejności wejściowej.
 - `maxEditDistance` musi być w zakresie 0–50.
+- Przekaż `FuzzyScorerOptions`, aby kontrolować próg, minimalną długość słowa dla fuzzy, diakrytyki, tie-break i tryb grupowania.
 
 ```csharp
 var results = WordScorer.GroupSimilarWords("apple aple apple", maxEditDistance: 1);
@@ -110,30 +112,68 @@ var groups = WordScorer.GroupWordsBySimilarity(
 // groups: [ [apple, aple], [banana] ]
 ```
 
-### Metody instancyjne (`IFuzzyScorer` / `FuzzyScorer`)
+### Opcje (`FuzzyScorerOptions`)
 
-DI-friendly asynchroniczne API z wykrywaniem literówek. Zarejestruj `IFuzzyScorer` → `FuzzyScorer` w kontenerze DI lub użyj `new FuzzyScorer()` bezpośrednio.
+Każda statyczna metoda (oraz klasa `FuzzyScorer`) przyjmuje opcjonalny obiekt opcji:
 
-#### `ScoreAsync(string text, double sensitivity, CancellationToken ct)`
+| Właściwość | Domyślnie | Znaczenie |
+|---|---|---|
+| `MaxEditDistance` | `1` | Próg Levenshteina (0–50) |
+| `MaxInputLength` | `1 000 000` | Tylko zaostrzenie; nie może przekroczyć twardego limitu |
+| `MaxWordsPerText` | `10 000` | Tylko zaostrzenie |
+| `MaxWordLength` | `256` | Tylko zaostrzenie; dłuższe słowa są pomijane |
+| `MinWordLengthForFuzzy` | `0` | Krótsze słowa łączą się tylko z dokładnymi dopasowaniami (planowana domyślna wartość 4 w 3.0) |
+| `IgnoreDiacritics` | `false` | Usuwa diakrytyki (`"café"` = `"cafe"`) |
+| `StripEdgeHyphens` | `true` | Przycina myślniki na krańcach |
+| `TieBreak` | `LongestThenOrdinal` | `FirstOccurrence`, `LongestThenOrdinal` lub `ReportAllTies` |
+| `Grouping` | `Leader` | `Leader` lub `ConnectedComponents` (przechodnie) |
 
 ```csharp
-using FuzzyScorer;
+var options = new FuzzyScorerOptions
+{
+    MaxEditDistance = 1,
+    MinWordLengthForFuzzy = 4,
+    IgnoreDiacritics = true,
+    Grouping = GroupingMode.ConnectedComponents,
+};
 
-IFuzzyScorer scorer = new FuzzyScorer();
-string text = "apple aple apple\nbanana cherry";
-
-var result = await scorer.ScoreAsync(text, sensitivity: 0.02, CancellationToken.None);
-
-Console.WriteLine($"Oryginalnych słów: {result.OriginalSize}");   // 5
-Console.WriteLine($"Po kompresji:      {result.CompressedSize}");  // 4 (aple scalone z apple)
-
-foreach (var error in result.Errors)
-    Console.WriteLine($"Literówka '{error.ErrorText}' (x{error.RepetitionCount}) w liniach: {string.Join(",", error.LineNumbers)}");
-// Wynik:
-// Literówka 'aple' (x1) w liniach: 1
+var results = WordScorer.GroupSimilarWords(text, options);
 ```
 
-`sensitivity` (0.0–1.0) mapuje liniowo na maksymalną odległość edycji: `maxEditDistance = round(sensitivity × 50)`.
+Limity w opcjach mogą tylko zaostrzyć przetwarzanie; wartości powyżej twardych limitów
+z `WordScorer` rzucają `ArgumentOutOfRangeException`.
+
+### Metody instancyjne (`FuzzyScorer` / `IFuzzyScorer`)
+
+API przyjazne DI z wykrywaniem literówek. `IFuzzyScorer` eksponuje asynchroniczne `ScoreAsync(text, sensitivity, ct)`; `FuzzyScorer` dodatkowo udostępnia synchroniczne `Score(...)` i przeciążenia z opcjami.
+
+#### `Score` / `ScoreAsync`
+
+```csharp
+FuzzyScorer scorer = new FuzzyScorer();
+string text = "apple aple apple\nbanana cherry";
+
+// na podstawie sensitivity
+var result = await scorer.ScoreAsync(text, sensitivity: 0.02);
+var same = scorer.Score(text, sensitivity: 0.02);
+
+// na podstawie opcji
+var custom = await scorer.ScoreAsync(text, new FuzzyScorerOptions
+{
+    MaxEditDistance = 1,
+    MinWordLengthForFuzzy = 4,
+});
+
+Console.WriteLine($"Słów razem:    {result.TotalWords}");    // 5
+Console.WriteLine($"Unikalne grupy: {result.UniqueGroups}"); // 4 (aple scalone z apple)
+
+foreach (var error in result.Errors)
+    Console.WriteLine($"Literówka '{error.Text}' (x{error.Occurrences}) -> '{error.SuggestedText}' w liniach: {string.Join(",", error.LineNumbers)}");
+// Wynik:
+// Literówka 'aple' (x1) -> 'apple' w liniach: 1
+```
+
+`sensitivity` (0.0–1.0) mapuje na maksymalną odległość edycji przez `Math.Round(sensitivity × 50, MidpointRounding.AwayFromZero)`.
 
 | sensitivity | max edit distance | zachowanie |
 |---|---|---|
@@ -143,22 +183,27 @@ foreach (var error in result.Errors)
 | 1.0 | 50 | maksymalna fuzziness |
 
 Zwraca `FuzzyScorerResult`:
-- **OriginalSize** — całkowita liczba słów po normalizacji
-- **CompressedSize** — liczba unikalnych grup po łączeniu
-- **Errors** — wykryte potencjalne literówki: każda odrębna pisownia, która nie jest reprezentantem grupy, raportowana jako `ErrorEntry` (`ErrorText`, `RepetitionCount`, 1‑based `LineNumbers`), posortowana według linii. Reprezentant to najczęstsze słowo; przy remisie wygrywa najdłuższy wariant, a następnie kolejność porządkowa.
+- **TotalWords** — całkowita liczba słów po normalizacji
+- **UniqueGroups** — liczba unikalnych grup po łączeniu
+- **MaxEditDistance** — próg użyty w danym przebiegu
+- **WordGroups** — po jednym `WordGroup` na grupę (`Representative`, odrębne `Members`, łączny `Count`)
+- **Errors** — wykryte potencjalne literówki: każda odrębna pisownia, która nie jest reprezentantem grupy, raportowana jako `ErrorEntry` (`Text`, `Occurrences`, `LineNumbers`, `SuggestedText`, `IsCertain`), posortowana według linii. `SuggestedText` to reprezentant, a `IsCertain` jest `false`, gdy kilka wariantów remisuje pod względem częstotliwości. W trybie `TieBreakMode.ReportAllTies` wszystkie remisujące warianty są raportowane z `SuggestedText = null`.
+- Nazwy z 2.2.0 (`OriginalSize`, `CompressedSize`, `ErrorText`, `RepetitionCount`, `WordScore.Score`) pozostają jako aliasy `[Obsolete]` do końca linii 2.3.x.
 
 ### Reguły normalizacji
 
 Przed analizą tekst jest:
 - Normalizowany do **formy C** Unicode (kompozycja kanoniczna) — `"café"` zapisane z łączonym akcentem pasuje do formy prekomponowanej
+- Opcjonalnie pozbawiany diakrytyków przy `IgnoreDiacritics = true` (`"café"` → `"cafe"`)
 - Oczyszczany ze znaków kontrolnych i interpunkcyjnych, które są zastępowane spacjami (`"hello,world"` → `"hello world"`, `"foo.bar"` → `"foo bar"`); apostrofy są usuwane bez dzielenia słowa (`"don't"` → `"dont"`, `"John's"` → `"johns"`)
 - Dzielony na słowa na podstawie **dowolnych** białych znaków Unicode (spacje, tabulatory, twarde spacje, separatory linii/akapitu, …)
-- Przycinany z myślników na krańcach; myślniki wewnątrz są zachowywane (`"well-known"` pozostaje)
+- Przycinany z myślników na krańcach (chyba że `StripEdgeHyphens = false`); myślniki wewnątrz są zachowywane (`"well-known"` pozostaje)
 - Porównywany bez rozróżniania wielkości liter
 
 ## Limity i bezpieczeństwo
 
 - Wejście jest walidowane przed przetwarzaniem: maks. **1 000 000** znaków, **10 000** słów na tekst, **256** znaków na słowo, odległość edycji ograniczona do **50**.
+- `FuzzyScorerOptions` może zaostrzyć limity; wartości powyżej twardych limitów rzucają `ArgumentOutOfRangeException`.
 - Grupowanie jest ograniczone twardym budżetem **10 000 000** porównań odległości edycji (`WordScorer.MaxSimilarityComparisons`); przekroczenie rzuca `ArgumentException` zamiast niezwiązanego czasowo przetwarzania kwadratowego.
 - Każde **odrębne** słowo jest porównywane z liderami grup tylko raz; powtórzone wystąpienia korzystają z przypisanej grupy i nie zużywają budżetu.
 - Progi **1–2** korzystają z indeksu wariantów delecyjnych, próg **3** z drzewa BK dla dużych wejść, a większe progi ze skanowania liniowego z wczesnym wyjściem.

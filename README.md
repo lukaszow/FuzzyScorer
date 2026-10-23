@@ -19,6 +19,7 @@ Use the static `WordScorer` class for quick frequency/similarity analysis, or in
 - [Quick start](#quick-start)
 - [How it works](#how-it-works)
 - [API](#api)
+- [Options](#options-fuzzyscoreroptions)
 - [Limits & security](#limits--security)
 - [Performance](#performance)
 - [FAQ](#faq)
@@ -44,7 +45,7 @@ string text = "apple aple Apple";
 var results = WordScorer.GroupSimilarWords(text, maxEditDistance: 1);
 
 foreach (var word in results)
-    Console.WriteLine($"{word.Text}: {word.Score}");
+    Console.WriteLine($"{word.Text}: {word.Count}");
 
 // Output:
 // apple: 3
@@ -79,8 +80,9 @@ but `"cat"` and `"dog"` never will.
 
 ### Static methods (`WordScorer`)
 
-All static methods return immutable `WordScore` instances (word text + score) and never
-return `null`; collection results are exposed as `IReadOnlyList<T>`.
+All static methods return immutable `WordScore` instances (word text + count) and never
+return `null`; collection results are exposed as `IReadOnlyList<T>`. Every method also
+has an overload accepting [`FuzzyScorerOptions`](#options-fuzzyscoreroptions).
 
 #### `GetWordFrequencies(string? text[, CancellationToken ct])`
 
@@ -99,6 +101,8 @@ distance ≤ `maxEditDistance` of the first occurrence are merged.
 - The **first occurrence** of a word becomes the group representative — results are
   order-dependent.
 - `maxEditDistance` must be in the range 0–50.
+- Pass `FuzzyScorerOptions` to control the threshold, minimum fuzzy length, diacritics,
+  tie-breaking, and grouping mode.
 
 ```csharp
 var results = WordScorer.GroupSimilarWords("apple aple apple", maxEditDistance: 1);
@@ -128,32 +132,71 @@ var groups = WordScorer.GroupWordsBySimilarity(
 // groups: [ [apple, aple], [banana] ]
 ```
 
-### Instance methods (`IFuzzyScorer` / `FuzzyScorer`)
+### Options (`FuzzyScorerOptions`)
 
-DI-friendly asynchronous API with typo detection. Register `IFuzzyScorer` → `FuzzyScorer`
-in a DI container, or use `new FuzzyScorer()` directly.
+Every static method (and the `FuzzyScorer` class) accepts an optional options object:
 
-#### `ScoreAsync(string text, double sensitivity, CancellationToken ct)`
+| Property | Default | Meaning |
+|---|---|---|
+| `MaxEditDistance` | `1` | Levenshtein threshold (0–50) |
+| `MaxInputLength` | `1,000,000` | Stricter values only; cannot exceed the hard cap |
+| `MaxWordsPerText` | `10,000` | Stricter values only |
+| `MaxWordLength` | `256` | Stricter values only; longer words are dropped |
+| `MinWordLengthForFuzzy` | `0` | Shorter words merge only with exact matches (planned default 4 in 3.0) |
+| `IgnoreDiacritics` | `false` | Remove diacritics (`"café"` matches `"cafe"`) |
+| `StripEdgeHyphens` | `true` | Trim leading/trailing hyphens |
+| `TieBreak` | `LongestThenOrdinal` | `FirstOccurrence`, `LongestThenOrdinal`, or `ReportAllTies` |
+| `Grouping` | `Leader` | `Leader` or `ConnectedComponents` (transitive) |
 
 ```csharp
-using FuzzyScorer;
+var options = new FuzzyScorerOptions
+{
+    MaxEditDistance = 1,
+    MinWordLengthForFuzzy = 4,
+    IgnoreDiacritics = true,
+    Grouping = GroupingMode.ConnectedComponents,
+};
 
-IFuzzyScorer scorer = new FuzzyScorer();
-string text = "apple aple apple\nbanana cherry";
-
-var result = await scorer.ScoreAsync(text, sensitivity: 0.02, CancellationToken.None);
-
-Console.WriteLine($"Original words:  {result.OriginalSize}");   // 5
-Console.WriteLine($"Compressed:      {result.CompressedSize}"); // 4 (aple merged into apple)
-
-foreach (var error in result.Errors)
-    Console.WriteLine($"Typo '{error.ErrorText}' (x{error.RepetitionCount}) on lines: {string.Join(",", error.LineNumbers)}");
-// Output:
-// Typo 'aple' (x1) on lines: 1
+var results = WordScorer.GroupSimilarWords(text, options);
 ```
 
-`sensitivity` (0.0–1.0) maps linearly to the maximum edit distance:
-`maxEditDistance = round(sensitivity × 50)`.
+Options limits can only make processing stricter; values above the hard limits declared
+on `WordScorer` throw `ArgumentOutOfRangeException`.
+
+### Instance methods (`FuzzyScorer` / `IFuzzyScorer`)
+
+DI-friendly API with typo detection. `IFuzzyScorer` exposes the asynchronous
+`ScoreAsync(text, sensitivity, ct)`; `FuzzyScorer` additionally exposes a synchronous
+`Score(...)` and options-based overloads.
+
+#### `Score` / `ScoreAsync`
+
+```csharp
+FuzzyScorer scorer = new FuzzyScorer();
+string text = "apple aple apple\nbanana cherry";
+
+// sensitivity-based
+var result = await scorer.ScoreAsync(text, sensitivity: 0.02);
+var same = scorer.Score(text, sensitivity: 0.02);
+
+// options-based
+var custom = await scorer.ScoreAsync(text, new FuzzyScorerOptions
+{
+    MaxEditDistance = 1,
+    MinWordLengthForFuzzy = 4,
+});
+
+Console.WriteLine($"Total words:   {result.TotalWords}");     // 5
+Console.WriteLine($"Unique groups: {result.UniqueGroups}");   // 4 (aple merged into apple)
+
+foreach (var error in result.Errors)
+    Console.WriteLine($"Typo '{error.Text}' (x{error.Occurrences}) -> '{error.SuggestedText}' on lines: {string.Join(",", error.LineNumbers)}");
+// Output:
+// Typo 'aple' (x1) -> 'apple' on lines: 1
+```
+
+`sensitivity` (0.0–1.0) maps to the maximum edit distance using
+`Math.Round(sensitivity × 50, MidpointRounding.AwayFromZero)`.
 
 | sensitivity | max edit distance | behaviour |
 |---|---|---|
@@ -163,31 +206,40 @@ foreach (var error in result.Errors)
 | 1.0 | 50 | maximum fuzziness |
 
 Returns `FuzzyScorerResult`:
-- **OriginalSize** — total number of words after normalization
-- **CompressedSize** — number of distinct groups after merging
+- **TotalWords** — total number of words after normalization
+- **UniqueGroups** — number of distinct groups after merging
+- **MaxEditDistance** — the threshold used for the run
+- **WordGroups** — one `WordGroup` per group (`Representative`, distinct `Members`, total `Count`)
 - **Errors** — detected potential typos: every distinct group member that is not the
-  group's representative, reported as an `ErrorEntry` (`ErrorText`, `RepetitionCount`,
-  1-based `LineNumbers`), sorted by line. The representative is the most frequent word;
-  ties are broken by the longest variant, then ordinal order.
+  group's representative, reported as an `ErrorEntry` (`Text`, `Occurrences`,
+  `LineNumbers`, `SuggestedText`, `IsCertain`), sorted by line. `SuggestedText` is the
+  representative, and `IsCertain` is `false` when several variants tie for the top
+  frequency. With `TieBreakMode.ReportAllTies`, every tied variant is reported with
+  `SuggestedText = null`.
+- The 2.2.0 names (`OriginalSize`, `CompressedSize`, `ErrorText`, `RepetitionCount`,
+  `WordScore.Score`) remain as `[Obsolete]` aliases through 2.3.x.
 
 ### Normalization rules
 
 Before analysis the text is:
 - Normalized to Unicode **form C** (canonical composition) — `"café"` written with a
   combining accent matches the precomposed form
+- Optionally stripped of diacritics when `IgnoreDiacritics = true` (`"café"` → `"cafe"`)
 - Stripped of control and punctuation characters, which are replaced with spaces
   (`"hello,world"` → `"hello world"`, `"foo.bar"` → `"foo bar"`); apostrophes are
   removed without splitting the word (`"don't"` → `"dont"`, `"John's"` → `"johns"`)
 - Split into words on **any** Unicode whitespace (spaces, tabs, non-breaking spaces,
   line/paragraph separators, …)
-- Trimmed of leading/trailing hyphens; interior hyphens are preserved
-  (`"well-known"` is preserved)
+- Trimmed of leading/trailing hyphens (unless `StripEdgeHyphens = false`); interior
+  hyphens are preserved (`"well-known"` is preserved)
 - Compared case-insensitively
 
 ## Limits & security
 
 - Input is validated before processing: max **1,000,000** characters, **10,000** words per
   text, **256** characters per word, and the edit distance is capped at **50**.
+- `FuzzyScorerOptions` can enforce stricter limits; values above the hard caps throw
+  `ArgumentOutOfRangeException`.
 - Grouping is bounded by a hard budget of **10,000,000** pairwise edit-distance comparisons
   (`WordScorer.MaxSimilarityComparisons`); exceeding it throws `ArgumentException` instead
   of degrading into unbounded quadratic work.

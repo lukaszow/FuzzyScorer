@@ -74,11 +74,11 @@ var score = new WordScore("hello", 5);
 
 // ❌ NOT POSSIBLE (compiler error)
 // score.Text = "goodbye";
-// score.Score = 10;
+// score.Count = 10;
 
 // ✅ CORRECT (read-only properties)
 Console.WriteLine(score.Text);   // "hello"
-Console.WriteLine(score.Score);  // 5
+Console.WriteLine(score.Count);  // 5
 ```
 
 **Benefits**:
@@ -207,7 +207,7 @@ catch (OperationCanceledException)
 
 // 3. Read-only access (guaranteed safety)
 WordScore score = new WordScore("word", 5);
-// score.Text and score.Score are read-only — no mutations possible
+// score.Text and score.Count are read-only — no mutations possible
 ```
 
 ### ❌ Unsafe Usage

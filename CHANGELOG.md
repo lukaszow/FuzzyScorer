@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-23
+
+### Added
+
+- `FuzzyScorerOptions` with `MaxEditDistance`, stricter limits, `MinWordLengthForFuzzy`,
+  `IgnoreDiacritics`, `StripEdgeHyphens`, `TieBreak`, and `Grouping`. Every static method
+  and the `FuzzyScorer` class accept an options overload.
+- `TieBreakMode` (`FirstOccurrence`, `LongestThenOrdinal`, `ReportAllTies`) and
+  `GroupingMode` (`Leader`, `ConnectedComponents`).
+- `WordGroup` and `FuzzyScorerResult.WordGroups` (representative, distinct members, count).
+- `FuzzyScorerResult.MaxEditDistance`.
+- `ErrorEntry.SuggestedText` (representative) and `ErrorEntry.IsCertain` (`false` on ties).
+- Synchronous `FuzzyScorer.Score(...)` overloads; `CancellationToken` is now optional in
+  `ScoreAsync`.
+- `MinWordLengthForFuzzy` prevents short words such as `"cat"`/`"cot"` from merging.
+- `IgnoreDiacritics` merges `"cafe"` with `"café"`.
+
+### Changed
+
+- Property names are now clearer; the old names remain as `[Obsolete]` aliases:
+  `WordScore.Score` → `Count`, `FuzzyScorerResult.OriginalSize` → `TotalWords`,
+  `CompressedSize` → `UniqueGroups`, `ErrorEntry.ErrorText` → `Text`,
+  `RepetitionCount` → `Occurrences`.
+- `sensitivity` rounds with `MidpointRounding.AwayFromZero` instead of banker's rounding.
+- Options limits can only make processing stricter; values above the hard caps on
+  `WordScorer` throw `ArgumentOutOfRangeException`.
+- `MinWordLengthForFuzzy` defaults to `0` in 2.3 to preserve behavior; 3.0 will default to 4.
+
+### Notes
+
+- `IFuzzyScorer` only gained the optional `CancellationToken` parameter. The options and
+  synchronous overloads are on the `FuzzyScorer` class, so existing interface
+  implementations keep compiling.
+
+### Tests
+
+- 114 tests (19 new options/result tests).
+
 ## [2.2.0] - 2026-10-23
 
 ### Performance
@@ -141,7 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release: `WordScorer` frequency counting and fuzzy grouping.
 
-[Unreleased]: https://github.com/lukaszow/FuzzyScorer/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/lukaszow/FuzzyScorer/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/lukaszow/FuzzyScorer/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/lukaszow/FuzzyScorer/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/lukaszow/FuzzyScorer/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/lukaszow/FuzzyScorer/compare/v1.1.2...v2.0.0

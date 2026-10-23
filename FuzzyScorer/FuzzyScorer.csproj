@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>FuzzyScorer</PackageId>
-    <Version>2.2.0</Version>
+    <Version>2.3.0</Version>
     <Title>FuzzyScorer — Fuzzy Text Matching &amp; Word Grouping for .NET</Title>
     <Authors>Lukaszow</Authors>
     <Description>

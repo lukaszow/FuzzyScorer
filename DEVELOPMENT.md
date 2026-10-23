@@ -31,6 +31,37 @@ Simply mentioning or pasting the bootstrap prompt ensures the agent is fully ali
 
 ## 🔒 Security & Changelog
 
+### Version 2.3.0 - Options & Naming (2026-10-23)
+
+Additive release: the options API is new, old property names remain as `[Obsolete]`
+aliases. Full details in [`CHANGELOG.md`](CHANGELOG.md).
+
+**Options:**
+
+1. `FuzzyScorerOptions` — edit distance, stricter limits, `MinWordLengthForFuzzy`,
+   `IgnoreDiacritics`, `StripEdgeHyphens`, `TieBreak`, `Grouping`.
+2. Static methods and `FuzzyScorer` accept options; `IFuzzyScorer` is unchanged apart from
+   an optional `CancellationToken`, so existing implementations keep compiling.
+3. `TieBreakMode`: `FirstOccurrence`, `LongestThenOrdinal` (default), `ReportAllTies`.
+4. `GroupingMode`: `Leader` (default) or `ConnectedComponents` (transitive, pairwise,
+   budget-bounded).
+
+**Result enrichments:**
+
+- `FuzzyScorerResult`: `TotalWords`, `UniqueGroups`, `MaxEditDistance`, `WordGroups`.
+- `ErrorEntry`: `Text`, `Occurrences`, `SuggestedText`, `IsCertain`.
+- `WordGroup`: `Representative`, distinct `Members`, total `Count`.
+- `FuzzyScorer.Score(...)` synchronous overloads; `ScoreAsync` accepts a default token.
+
+**Compatibility:**
+
+- Old names (`Score`, `OriginalSize`, `CompressedSize`, `ErrorText`, `RepetitionCount`)
+  forward through `[Obsolete]` aliases.
+- `sensitivity` now rounds with `MidpointRounding.AwayFromZero`.
+- `MinWordLengthForFuzzy` defaults to 0 in 2.3; the planned default is 4 in 3.0.
+
+**Testing:** 114 unit tests; build and `dotnet format` clean (0 warnings).
+
 ### Version 2.2.0 - Grouping Performance (2026-10-23)
 
 Performance release; no public API surface changes. Full details in

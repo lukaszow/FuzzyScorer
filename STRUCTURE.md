@@ -24,13 +24,18 @@ This file documents the project structure and architectural patterns for the `Fu
 │   ├── WordScore.cs             # Data model for word analysis (immutable)
 │   ├── IFuzzyScorer.cs          # Interface for async fuzzy scoring
 │   ├── FuzzyScorer.cs           # Instance implementation of IFuzzyScorer
-│   ├── FuzzyScorerResult.cs     # Result model (sizes + error list)
-│   └── ErrorEntry.cs            # Error entry model (text, count, lines)
+│   ├── FuzzyScorerOptions.cs    # Options + validation
+│   ├── TieBreakMode.cs          # Representative tie-break options
+│   ├── GroupingMode.cs          # Leader vs connected components
+│   ├── FuzzyScorerResult.cs     # Result model (sizes, distance, groups, errors)
+│   ├── ErrorEntry.cs            # Error entry model (text, count, lines, suggestion)
+│   └── WordGroup.cs             # Group model (representative, members, count)
 ├── FuzzyScorer.Tests/           # Unit test project (xUnit)
     ├── FuzzyScorer.Tests.csproj
     ├── ScoringTests.cs          # Unit tests for scoring logic
     ├── CorrectnessTests.cs      # Normalization, validation, tie-break regressions
-    └── GroupingEquivalenceTests.cs  # Differential tests vs reference implementation
+    ├── GroupingEquivalenceTests.cs  # Differential tests vs reference implementation
+    └── OptionsTests.cs          # Options, result enrichments, naming aliases
 └── benchmarks/                  # Performance suite (BenchmarkDotNet)
     ├── RESULTS.md               # Recorded before/after measurements
     └── FuzzyScorer.Benchmarks/  # Benchmark project
@@ -46,8 +51,9 @@ This file documents the project structure and architectural patterns for the `Fu
 
 ### 2. Implementation Pattern
 - **Current State**: A library providing word frequency analysis, fuzzy similarity grouping, and async error detection.
-- **Data Models**: Use simple immutable POCOs like `WordScore`, `FuzzyScorerResult`, and `ErrorEntry`.
+- **Data Models**: Use simple immutable POCOs like `WordScore`, `FuzzyScorerResult`, `ErrorEntry`, and `WordGroup`.
 - **Methods**: Static API on `WordScorer` for basic operations; instance API via `IFuzzyScorer` for async analysis with typo detection and DI support.
+- **Options**: `FuzzyScorerOptions` carries edit distance, limits (stricter only), `MinWordLengthForFuzzy`, `IgnoreDiacritics`, `StripEdgeHyphens`, `TieBreak`, and `Grouping`.
 
 ### 3. Namespace Convention
 - Use the base namespace `FuzzyScorer` for all files within the main project directory.
@@ -66,6 +72,13 @@ The `WordScorer` class enforces security limits to prevent DoS attacks:
 - **MaxWordLength**: 256 characters per word
 - **MaxEditDistanceLimit**: 50 for Levenshtein distance
 - **MaxSimilarityComparisons**: 10,000,000 distance computations (distinct words only)
+- Options may lower these limits but never exceed them.
+
+### Result Model
+- `FuzzyScorerResult` exposes `TotalWords`, `UniqueGroups`, `MaxEditDistance`, `WordGroups`, and `Errors`.
+- `ErrorEntry` exposes `Text`, `Occurrences`, `LineNumbers`, `SuggestedText`, and `IsCertain`.
+- `WordGroup` exposes `Representative`, distinct `Members`, and total `Count`.
+- The 2.2.0 names remain as `[Obsolete]` aliases.
 
 ### Grouping Performance
 - Distinct words are compared with group leaders once; repeated occurrences are free.
