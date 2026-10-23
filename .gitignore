@@ -39,3 +39,6 @@ Generated\ Files/
 
 # Local NuGet feed (pack output)
 nupkgs/
+
+# BenchmarkDotNet artifacts
+BenchmarkDotNet.Artifacts/
