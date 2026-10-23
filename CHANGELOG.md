@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-23
+
+### Performance
+
+- **Distinct words are compared once.** Repeated occurrences reuse the group assigned to
+  their first occurrence instead of being compared again, so the comparison budget is
+  spent on unique words only.
+- **Deletion-variant index for thresholds 1–2.** Candidate leaders are found through
+  hash-keyed deletion variants and verified with the exact bounded distance. 10,000 unique
+  words at `maxEditDistance: 1` now take ~32 ms instead of throwing; at 2, ~104 ms.
+- **BK-tree for threshold 3** on inputs of 3,000+ words, with subtree length pruning.
+- **Allocation-free distance:** the banded Levenshtein routine uses stack/pooled buffers
+  instead of allocating two arrays per comparison.
+- **Single-pass counting:** `GetWordFrequencies` builds counts while tokenizing, and
+  `FuzzyScorer` no longer materializes an intermediate word list.
+- 1,000-word grouping is now ~6× faster and allocates ~10× less than 2.1.0; see
+  `benchmarks/RESULTS.md` for methodology and before/after numbers.
+
+### Changed
+
+- `MaxSimilarityComparisons` now counts comparisons of **distinct** words; repeated
+  occurrences no longer consume the budget.
+
+### Added
+
+- `benchmarks/FuzzyScorer.Benchmarks` (BenchmarkDotNet) and `benchmarks/RESULTS.md`.
+- Differential tests (`GroupingEquivalenceTests`) against a reference occurrence-based
+  implementation, including forced indexed paths.
+- Internal comparison-budget overload for exercising the guard without millions of
+  comparisons.
+
+### Tests
+
+- 95 tests (17 new: differential/equivalence and scalability).
+
 ## [2.1.0] - 2026-10-23
 
 ### Changed behavior
@@ -106,7 +141,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release: `WordScorer` frequency counting and fuzzy grouping.
 
-[Unreleased]: https://github.com/lukaszow/FuzzyScorer/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/lukaszow/FuzzyScorer/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/lukaszow/FuzzyScorer/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/lukaszow/FuzzyScorer/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/lukaszow/FuzzyScorer/compare/v1.1.2...v2.0.0
 [1.1.2]: https://github.com/lukaszow/FuzzyScorer/compare/v1.1.1...v1.1.2
 [1.1.0]: https://github.com/lukaszow/FuzzyScorer/compare/v1.0.0...v1.1.0

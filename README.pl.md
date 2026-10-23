@@ -17,6 +17,7 @@ Użyj statycznej klasy `WordScorer` do szybkiej analizy częstotliwości/podobie
 - [Jak to działa](#jak-to-działa)
 - [API](#api)
 - [Limity i bezpieczeństwo](#limity-i-bezpieczeństwo)
+- [Wydajność](#wydajność)
 - [FAQ](#faq)
 - [Licencja](#licencja)
 
@@ -159,7 +160,9 @@ Przed analizą tekst jest:
 
 - Wejście jest walidowane przed przetwarzaniem: maks. **1 000 000** znaków, **10 000** słów na tekst, **256** znaków na słowo, odległość edycji ograniczona do **50**.
 - Grupowanie jest ograniczone twardym budżetem **10 000 000** porównań odległości edycji (`WordScorer.MaxSimilarityComparisons`); przekroczenie rzuca `ArgumentException` zamiast niezwiązanego czasowo przetwarzania kwadratowego.
-- Odległość Levenshteina liczona jest w pasmach, z wczesnym przerwaniem po przekroczeniu progu i pamięcią `O(min(n, m))`.
+- Każde **odrębne** słowo jest porównywane z liderami grup tylko raz; powtórzone wystąpienia korzystają z przypisanej grupy i nie zużywają budżetu.
+- Progi **1–2** korzystają z indeksu wariantów delecyjnych, próg **3** z drzewa BK dla dużych wejść, a większe progi ze skanowania liniowego z wczesnym wyjściem.
+- Odległość Levenshteina liczona jest w pasmach, z wczesnym przerwaniem po przekroczeniu progu i pamięcią `O(min(n, m))` z buforami z puli.
 - Słowa dłuższe niż 256 znaków są **cicho pomijane** (nie jest to błąd).
 - Limity są publicznymi stałymi (`const`) na `WordScorer` (`MaxInputLength`, `MaxWordsPerText`, `MaxWordLength`, `MaxEditDistanceLimit`, `MaxSimilarityComparisons`) — są to stałe czasu kompilacji i nie można ich zmieniać w runtime.
 - Brak niebezpiecznego kodu, brak niezarządzanej pamięci, brak zależności runtime poza .NET BCL.
@@ -167,6 +170,23 @@ Przed analizą tekst jest:
 - Wyniki są niezmienne (`WordScore`, `FuzzyScorerResult`, `ErrorEntry`) — walidowane przy konstrukcji, tylko do odczytu później.
 
 Pełny model zagrożeń i proces zgłaszania: [SECURITY.md](SECURITY.md).
+
+## Wydajność
+
+Pomiary BenchmarkDotNet na unikalnych słowach o długości 4–10 znaków (metodologia i wyniki przed/po w [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md)):
+
+| Scenariusz | Czas | Alokacje |
+|---|---:|---:|
+| `GroupSimilarWords`, 10 000 słów, `maxEditDistance: 1` | 32 ms | 11 MB |
+| `GroupSimilarWords`, 10 000 słów, `maxEditDistance: 2` | 104 ms | 34 MB |
+| `GroupSimilarWords`, 1 000 słów, `maxEditDistance: 1` | 1,9 ms | 1,2 MB |
+| `GetWordFrequencies`, 10 000 słów | 3,3 ms | 2,6 MB |
+
+Przed wersją 2.2.0 grupowanie 10 000 słów przekraczało budżet porównań i rzucało `ArgumentException`. Uruchom pomiary samodzielnie:
+
+```bash
+dotnet run -c Release --project benchmarks/FuzzyScorer.Benchmarks
+```
 
 ## FAQ
 

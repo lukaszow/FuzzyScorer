@@ -20,6 +20,7 @@ Use the static `WordScorer` class for quick frequency/similarity analysis, or in
 - [How it works](#how-it-works)
 - [API](#api)
 - [Limits & security](#limits--security)
+- [Performance](#performance)
 - [FAQ](#faq)
 - [License](#license)
 
@@ -190,8 +191,12 @@ Before analysis the text is:
 - Grouping is bounded by a hard budget of **10,000,000** pairwise edit-distance comparisons
   (`WordScorer.MaxSimilarityComparisons`); exceeding it throws `ArgumentException` instead
   of degrading into unbounded quadratic work.
+- Each **distinct** word is compared with the group leaders once; repeated occurrences
+  reuse the assigned group and do not consume the comparison budget.
+- Thresholds **1–2** use a deletion-variant index, threshold **3** uses a BK-tree for
+  large inputs, and larger thresholds use the linear scan with its early exit.
 - The Levenshtein routine is banded, short-circuits on the threshold, and uses
-  `O(min(n, m))` memory.
+  `O(min(n, m))` memory with pooled buffers.
 - Words longer than 256 characters are **silently dropped** (not an error).
 - The limits are `public const` fields on `WordScorer` (`MaxInputLength`, `MaxWordsPerText`,
   `MaxWordLength`, `MaxEditDistanceLimit`, `MaxSimilarityComparisons`). They are
@@ -204,6 +209,25 @@ Before analysis the text is:
   construction and read-only afterwards.
 
 See [SECURITY.md](SECURITY.md) for the full threat model and reporting process.
+
+## Performance
+
+Measured with BenchmarkDotNet on unique words of 4–10 characters (see
+[`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) for methodology and before/after):
+
+| Scenario | Time | Allocated |
+|---|---:|---:|
+| `GroupSimilarWords`, 10,000 words, `maxEditDistance: 1` | 32 ms | 11 MB |
+| `GroupSimilarWords`, 10,000 words, `maxEditDistance: 2` | 104 ms | 34 MB |
+| `GroupSimilarWords`, 1,000 words, `maxEditDistance: 1` | 1.9 ms | 1.2 MB |
+| `GetWordFrequencies`, 10,000 words | 3.3 ms | 2.6 MB |
+
+Before 2.2.0 the 10,000-word grouping cases exceeded the comparison budget and threw
+`ArgumentException`. Run the suite yourself:
+
+```bash
+dotnet run -c Release --project benchmarks/FuzzyScorer.Benchmarks
+```
 
 ## FAQ
 

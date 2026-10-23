@@ -31,6 +31,39 @@ Simply mentioning or pasting the bootstrap prompt ensures the agent is fully ali
 
 ## 🔒 Security & Changelog
 
+### Version 2.2.0 - Grouping Performance (2026-10-23)
+
+Performance release; no public API surface changes. Full details in
+[`CHANGELOG.md`](CHANGELOG.md) and [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md).
+
+**Grouping:**
+
+1. Distinct words are compared with group leaders once; repeated occurrences reuse the
+   assigned group and do not consume `MaxSimilarityComparisons`.
+2. Thresholds 1–2 use a deletion-variant index (64-bit hash keys; candidates verified).
+3. Threshold 3 uses a BK-tree for inputs ≥ 3,000 words, with subtree length pruning.
+4. Larger thresholds keep the linear scan, which is fast when matches are plentiful.
+5. The banded Levenshtein routine uses stack/pooled buffers instead of two allocations
+   per comparison.
+
+**Counting:**
+
+- `GetWordFrequencies` counts while tokenizing (single pass).
+- `FuzzyScorer.ScoreAsync` builds the frequency and line maps in one loop and no longer
+  materializes an intermediate word list.
+
+**Results (10,000 unique words, 4–10 characters):**
+
+| Scenario | 2.1.0 | 2.2.0 |
+|---|---:|---:|
+| `maxEditDistance: 1` | budget exceeded | 32 ms / 11 MB |
+| `maxEditDistance: 2` | budget exceeded | 104 ms / 34 MB |
+
+1,000-word grouping is ~6× faster and allocates ~10× less than 2.1.0.
+
+**Testing:** 95 unit tests (differential tests against a reference implementation plus a
+10,000-word scalability test); build and `dotnet format` clean (0 warnings).
+
 ### Version 2.1.0 - Normalization & Typo-Selection Correctness (2026-10-23)
 
 Behavioral release on top of 2.0.0; no API surface changes. Full details in

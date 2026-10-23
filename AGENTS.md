@@ -3,7 +3,7 @@
 ## Quick reference
 
 - **.NET 10.0**, **C# 13**, class library shipped as NuGet package `FuzzyScorer` (zero runtime dependencies)
-- **xUnit** test project, 78 tests, `InternalsVisibleTo` exposes `internal` members to tests
+- **xUnit** test project, 95 tests, `InternalsVisibleTo` exposes `internal` members to tests
 - Solution uses **`.slnx`** format (not `.sln`)
 - **CI workflow**: `.github/workflows/ci.yml` (build/format/test on push & PR) and `.github/workflows/publish.yml` (tag `v*.*.*` → build, test, pack, push to NuGet)
 - `GenerateDocumentationFile>true` — every public member needs `///` or it triggers CS1591 (keep the build at 0 warnings)
@@ -16,9 +16,10 @@
 dotnet build                          # Debug build (0 warnings expected)
 dotnet build -c Release               # Release build
 dotnet format --verify-no-changes     # Style/analyzer check used in CI
-dotnet test                           # Run all 78 tests
+dotnet test                           # Run all 95 tests
 dotnet test --filter "FullyQualifiedName~ScoringTests.Frequency_TypicalCase_ShouldCountCorrectly"  # single test
 dotnet pack -c Release -o ./nupkgs    # Package (see pack.ps1)
+dotnet run -c Release --project benchmarks/FuzzyScorer.Benchmarks  # BenchmarkDotNet suite
 ```
 
 ## Gotchas
@@ -26,7 +27,8 @@ dotnet pack -c Release -o ./nupkgs    # Package (see pack.ps1)
 - No custom NuGet sources: `nuget.config` is intentionally empty, so restore uses the default nuget.org source. `nupkgs/` is only the gitignored pack output (`dotnet pack -o ./nupkgs`), not a registered feed.
 - `WordScorer.cs` holds the public class **`WordScorer`** (renamed from `Scorer.cs` in v2.0.0).
 - `ScoreAsync` maps `sensitivity` (0.0–1.0) to edit distance via **`Math.Round(sensitivity × 50)`** — not `ceil`.
-- Similarity grouping is bounded by `MaxSimilarityComparisons` (10,000,000); inputs with many distinct words throw `ArgumentException` instead of degrading.
+- Similarity grouping is bounded by `MaxSimilarityComparisons` (10,000,000); inputs with many distinct words throw `ArgumentException` instead of degrading. The budget counts distinct-word comparisons — repeated occurrences are free.
+- Thresholds 1–2 use a deletion-variant index (hash-keyed, verified), threshold 3 uses a BK-tree for inputs ≥ 3,000 words, larger thresholds use the linear scan. `benchmarks/RESULTS.md` records before/after numbers.
 - `maxEditDistance` outside 0–50 throws **`ArgumentOutOfRangeException`** (it derives from `ArgumentException`); the comparison-budget overflow still throws plain `ArgumentException`.
 
 ## Project structure
@@ -39,6 +41,8 @@ FuzzyScorer/                              # library — namespace `FuzzyScorer`
   WordScore.cs / FuzzyScorerResult.cs / ErrorEntry.cs  # immutable POCOs
 FuzzyScorer.Tests/ScoringTests.cs         # xUnit — namespace `FuzzyScorer.Tests`
 FuzzyScorer.Tests/CorrectnessTests.cs     # Normalization/validation/tie-break regressions
+FuzzyScorer.Tests/GroupingEquivalenceTests.cs  # Differential tests vs reference implementation
+benchmarks/FuzzyScorer.Benchmarks/        # BenchmarkDotNet suite (RESULTS.md holds numbers)
 nupkgs/                                   # local pack output (gitignored; not a package source)
 ```
 
@@ -47,7 +51,7 @@ nupkgs/                                   # local pack output (gitignored; not a
 - XML docs (`///`) required on all public members; nullable enabled — never return `null` from collection-returning methods
 - `OrdinalIgnoreCase` comparisons; `ToLowerInvariant()` for culture-safe normalization
 - Prefer LINQ over manual loops; result types are immutable (get-only props, validated constructors)
-- `internal` helpers (`NormalizeUnicode`, `TokenizeLine`, `NormalizeAndExtractWords`, `NormalizeAndExtractWordsWithLines`, `BuildSimilarityGroups`, `GetWordGroups`, `WordNormalizationRegex`) are test entry points via `InternalsVisibleTo`
+- `internal` helpers (`NormalizeUnicode`, `TokenizeLine`, `NormalizeAndExtractWords`, `NormalizeAndExtractWordsWithLines`, `CountWords`, `BuildSimilarityGroups`, `GetWordGroups`, `WordNormalizationRegex`) are test entry points via `InternalsVisibleTo`
 
 ## Security limits (public constants on `WordScorer`)
 
@@ -68,6 +72,6 @@ nupkgs/                                   # local pack output (gitignored; not a
 - Normalization: NFC, punctuation/control → space, all Unicode whitespace splits words, apostrophes removed, edge hyphens trimmed
 - Error representative = most frequent → longest → ordinal; one `ErrorEntry` per distinct spelling, sorted by line
 - Long words (>256 chars) are silently dropped (not an error)
-- Grouping complexity is bounded by `MaxSimilarityComparisons` (10,000,000); the Levenshtein routine is banded and short-circuits on threshold
+- Grouping complexity is bounded by `MaxSimilarityComparisons` (10,000,000); distinct words are compared once, the Levenshtein routine is banded, and k≤2 uses a deletion-variant index
 - CI: `.github/workflows/ci.yml` (push & PR) and `.github/workflows/publish.yml` (tag `v*.*.*` or manual) build → test → pack → push to NuGet + GitHub Packages
 - Related docs: `README.md` (API), `SECURITY.md` (threat model), `AI_RULES.md` (coding standards), `STRUCTURE.md` (dir rules — no new top-level folders without permission)

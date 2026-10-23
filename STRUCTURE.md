@@ -11,6 +11,8 @@ This file documents the project structure and architectural patterns for the `Fu
 ├── AGENTS.md                    # AI agent development guide
 ├── STRUCTURE.md                 # This file
 ├── README.md                    # Project documentation
+├── README.pl.md                 # Polish documentation
+├── CHANGELOG.md                 # Release history
 ├── SECURITY.md                  # Security policy and threat model
 ├── DEVELOPMENT.md               # Development notes and guidelines
 ├── nuget.config                 # NuGet configuration (default nuget.org source)
@@ -24,16 +26,21 @@ This file documents the project structure and architectural patterns for the `Fu
 │   ├── FuzzyScorer.cs           # Instance implementation of IFuzzyScorer
 │   ├── FuzzyScorerResult.cs     # Result model (sizes + error list)
 │   └── ErrorEntry.cs            # Error entry model (text, count, lines)
-└── FuzzyScorer.Tests/           # Unit test project (xUnit)
+├── FuzzyScorer.Tests/           # Unit test project (xUnit)
     ├── FuzzyScorer.Tests.csproj
     ├── ScoringTests.cs          # Unit tests for scoring logic
-    └── CorrectnessTests.cs      # Normalization, validation, tie-break regressions
+    ├── CorrectnessTests.cs      # Normalization, validation, tie-break regressions
+    └── GroupingEquivalenceTests.cs  # Differential tests vs reference implementation
+└── benchmarks/                  # Performance suite (BenchmarkDotNet)
+    ├── RESULTS.md               # Recorded before/after measurements
+    └── FuzzyScorer.Benchmarks/  # Benchmark project
 ```
 
 ## Architecture & Guidelines
 
 ### 1. Directory Strictness
 - **DO NOT** create new top-level folders without explicit user permission.
+  (`benchmarks/` is approved; keep benchmark code there.)
 - All core logic should reside within the `FuzzyScorer/` subdirectory.
 - If the project grows, follow standard .NET conventions (e.g., `Services/`, `Models/`, `Interfaces/`) within the `FuzzyScorer/` directory.
 
@@ -58,6 +65,14 @@ The `WordScorer` class enforces security limits to prevent DoS attacks:
 - **MaxWordsPerText**: 10,000 words max
 - **MaxWordLength**: 256 characters per word
 - **MaxEditDistanceLimit**: 50 for Levenshtein distance
+- **MaxSimilarityComparisons**: 10,000,000 distance computations (distinct words only)
+
+### Grouping Performance
+- Distinct words are compared with group leaders once; repeated occurrences are free.
+- Thresholds 1–2: deletion-variant index (hash-keyed, candidates verified).
+- Threshold 3: BK-tree with subtree length pruning for inputs ≥ 3,000 words.
+- Larger thresholds: linear scan with an early exit on the first match.
+- Measurements and methodology: `benchmarks/RESULTS.md`.
 
 ### Normalization
 Input text is automatically normalized via `NormalizeAndExtractWords()` method:
