@@ -70,7 +70,7 @@ namespace FuzzyScorer.Tests
             var results = WordScorer.GetWordFrequencies("caf\u00E9 cafe\u0301");
 
             Assert.Single(results);
-            Assert.Equal(2, results[0].Score);
+            Assert.Equal(2, results[0].Count);
         }
 
         [Fact]
@@ -179,9 +179,9 @@ namespace FuzzyScorer.Tests
             var result = await _scorer.ScoreAsync("aple ale apple", 0.02, CancellationToken.None);
 
             Assert.Equal(2, result.Errors.Count);
-            Assert.DoesNotContain(result.Errors, e => e.ErrorText == "apple");
-            Assert.Contains(result.Errors, e => e.ErrorText == "aple");
-            Assert.Contains(result.Errors, e => e.ErrorText == "ale");
+            Assert.DoesNotContain(result.Errors, e => e.Text == "apple");
+            Assert.Contains(result.Errors, e => e.Text == "aple");
+            Assert.Contains(result.Errors, e => e.Text == "ale");
         }
 
         [Fact]
@@ -191,7 +191,7 @@ namespace FuzzyScorer.Tests
             var result = await _scorer.ScoreAsync("cat cot", 0.02, CancellationToken.None);
 
             Assert.Single(result.Errors);
-            Assert.Equal("cot", result.Errors[0].ErrorText);
+            Assert.Equal("cot", result.Errors[0].Text);
         }
 
         [Fact]
@@ -201,8 +201,8 @@ namespace FuzzyScorer.Tests
                 "aple aple apple apple apple", 0.02, CancellationToken.None);
 
             var error = Assert.Single(result.Errors);
-            Assert.Equal("aple", error.ErrorText);
-            Assert.Equal(2, error.RepetitionCount);
+            Assert.Equal("aple", error.Text);
+            Assert.Equal(2, error.Occurrences);
             Assert.Single(error.LineNumbers);
             Assert.Equal(1, error.LineNumbers[0]);
         }
@@ -214,8 +214,8 @@ namespace FuzzyScorer.Tests
                 "apple apple aple aple", 0.02, CancellationToken.None);
 
             var error = Assert.Single(result.Errors);
-            Assert.Equal("aple", error.ErrorText);
-            Assert.Equal(2, error.RepetitionCount);
+            Assert.Equal("aple", error.Text);
+            Assert.Equal(2, error.Occurrences);
         }
 
         [Fact]
@@ -225,9 +225,9 @@ namespace FuzzyScorer.Tests
                 "banana banana bannana\nfoo\napple aple", 0.02, CancellationToken.None);
 
             Assert.Equal(2, result.Errors.Count);
-            Assert.Equal("bannana", result.Errors[0].ErrorText);
+            Assert.Equal("bannana", result.Errors[0].Text);
             Assert.Equal(1, result.Errors[0].LineNumbers[0]);
-            Assert.Equal("aple", result.Errors[1].ErrorText);
+            Assert.Equal("aple", result.Errors[1].Text);
             Assert.Equal(3, result.Errors[1].LineNumbers[0]);
         }
 

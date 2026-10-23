@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -57,6 +58,8 @@ namespace FuzzyScorer
 
         internal static readonly Regex WordNormalizationRegex = new Regex(@"[^\p{L}\p{N}'\u2019\-]+", RegexOptions.Compiled);
 
+        private static readonly FuzzyScorerOptions DefaultOptions = new FuzzyScorerOptions();
+
         /// <summary>
         /// Returns word frequency counts from the input text.
         /// Comparisons are case-insensitive (e.g., "Apple" and "apple" are treated as the same word).
@@ -80,10 +83,43 @@ namespace FuzzyScorer
         /// <exception cref="OperationCanceledException">Thrown if operation is cancelled.</exception>
         public static IReadOnlyList<WordScore> GetWordFrequencies(string? inputText, CancellationToken cancellationToken)
         {
+            return GetWordFrequencies(inputText, DefaultOptions, cancellationToken);
+        }
+
+        /// <summary>
+        /// Returns word frequency counts using explicit normalization and limit options.
+        /// </summary>
+        /// <param name="inputText">The raw text to analyze for word frequency.</param>
+        /// <param name="options">Normalization and limit options.</param>
+        /// <returns>A list of WordScore objects, each containing a unique word and its frequency count.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="options"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if an option is out of range.</exception>
+        /// <exception cref="ArgumentException">Thrown if inputText exceeds size limits.</exception>
+        public static IReadOnlyList<WordScore> GetWordFrequencies(string? inputText, FuzzyScorerOptions options)
+        {
+            return GetWordFrequencies(inputText, options, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// Returns word frequency counts using explicit normalization and limit options.
+        /// </summary>
+        /// <param name="inputText">The raw text to analyze for word frequency.</param>
+        /// <param name="options">Normalization and limit options.</param>
+        /// <param name="cancellationToken">Cancellation token for aborting the operation.</param>
+        /// <returns>A list of WordScore objects, each containing a unique word and its frequency count.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="options"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if an option is out of range.</exception>
+        /// <exception cref="ArgumentException">Thrown if inputText exceeds size limits.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if operation is cancelled.</exception>
+        public static IReadOnlyList<WordScore> GetWordFrequencies(string? inputText, FuzzyScorerOptions options, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            options.Validate();
+
             if (string.IsNullOrWhiteSpace(inputText))
                 return Array.Empty<WordScore>();
 
-            var counts = CountWords(inputText, cancellationToken);
+            var counts = CountWords(inputText, options, cancellationToken);
             var results = new List<WordScore>(counts.Count);
 
             foreach (var entry in counts)
@@ -128,11 +164,49 @@ namespace FuzzyScorer
         {
             ValidateEditDistance(maxEditDistance);
 
+            return GroupSimilarWords(
+                inputText,
+                new FuzzyScorerOptions { MaxEditDistance = maxEditDistance },
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Groups similar words using explicit options (edit distance, limits, minimum
+        /// length for fuzzy matching, and grouping mode).
+        /// </summary>
+        /// <param name="inputText">The raw text to analyze.</param>
+        /// <param name="options">Grouping and normalization options.</param>
+        /// <returns>A list of WordScore objects where similar words are merged into a single entry.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="options"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if an option is out of range.</exception>
+        /// <exception cref="ArgumentException">Thrown if inputText exceeds size limits.</exception>
+        public static IReadOnlyList<WordScore> GroupSimilarWords(string? inputText, FuzzyScorerOptions options)
+        {
+            return GroupSimilarWords(inputText, options, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// Groups similar words using explicit options (edit distance, limits, minimum
+        /// length for fuzzy matching, and grouping mode).
+        /// </summary>
+        /// <param name="inputText">The raw text to analyze.</param>
+        /// <param name="options">Grouping and normalization options.</param>
+        /// <param name="cancellationToken">Cancellation token for aborting the operation.</param>
+        /// <returns>A list of WordScore objects where similar words are merged into a single entry.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="options"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if an option is out of range.</exception>
+        /// <exception cref="ArgumentException">Thrown if inputText exceeds size limits.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if operation is cancelled.</exception>
+        public static IReadOnlyList<WordScore> GroupSimilarWords(string? inputText, FuzzyScorerOptions options, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            options.Validate();
+
             if (string.IsNullOrWhiteSpace(inputText))
                 return Array.Empty<WordScore>();
 
-            var allWords = NormalizeAndExtractWords(inputText, cancellationToken);
-            return GroupBySimilarity(allWords, maxEditDistance, cancellationToken);
+            var allWords = NormalizeAndExtractWords(inputText, options, cancellationToken);
+            return GroupBySimilarity(allWords, options, cancellationToken);
         }
 
         /// <summary>
@@ -151,11 +225,31 @@ namespace FuzzyScorer
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="maxEditDistance"/> is outside the allowed range.</exception>
         public static IReadOnlyList<IReadOnlyList<string>> GroupWordsBySimilarity(IEnumerable<string> words, int maxEditDistance, CancellationToken cancellationToken)
         {
-            ArgumentNullException.ThrowIfNull(words);
-
             ValidateEditDistance(maxEditDistance);
 
-            return BuildSimilarityGroups(words, maxEditDistance, cancellationToken);
+            return GroupWordsBySimilarity(
+                words,
+                new FuzzyScorerOptions { MaxEditDistance = maxEditDistance },
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Groups a pre-normalized word sequence using explicit options.
+        /// </summary>
+        /// <param name="words">The words to group.</param>
+        /// <param name="options">Grouping options.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>List of similarity groups.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if a parameter is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if an option is out of range.</exception>
+        /// <exception cref="ArgumentException">Thrown if the collection contains a null element or the budget is exceeded.</exception>
+        public static IReadOnlyList<IReadOnlyList<string>> GroupWordsBySimilarity(IEnumerable<string> words, FuzzyScorerOptions options, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(words);
+            ArgumentNullException.ThrowIfNull(options);
+            options.Validate();
+
+            return BuildSimilarityGroups(words, options, cancellationToken);
         }
 
         /// <summary>
@@ -183,6 +277,23 @@ namespace FuzzyScorer
         }
 
         /// <summary>
+        /// Returns true if the two words are similar within the configured edit distance.
+        /// Comparisons are case-insensitive.
+        /// </summary>
+        /// <param name="word1">First word.</param>
+        /// <param name="word2">Second word.</param>
+        /// <param name="options">Options providing <see cref="FuzzyScorerOptions.MaxEditDistance"/>.</param>
+        /// <exception cref="ArgumentNullException">Thrown if a parameter is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if an option is out of range.</exception>
+        public static bool AreWordsSimilar(string word1, string word2, FuzzyScorerOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            options.Validate();
+
+            return AreWordsSimilar(word1, word2, options.MaxEditDistance);
+        }
+
+        /// <summary>
         /// Groups words by similarity and returns the original word groups.
         /// Each inner list contains all words assigned to one similarity group.
         /// The first occurrence of a word becomes the group's leader.
@@ -203,13 +314,37 @@ namespace FuzzyScorer
         /// Groups words by similarity. The first occurrence of a word becomes
         /// the group's representative. Results are order-dependent.
         /// </summary>
-        private static List<WordScore> GroupBySimilarity(IReadOnlyList<string> words, int maxEditDistance, CancellationToken cancellationToken)
+        private static List<WordScore> GroupBySimilarity(
+            IReadOnlyList<string> words,
+            FuzzyScorerOptions options,
+            CancellationToken cancellationToken)
         {
-            var groups = BuildSimilarityGroups(words, maxEditDistance, cancellationToken);
+            var groups = BuildSimilarityGroups(words, options, cancellationToken);
 
             return groups
                 .Select(group => new WordScore(group[0], group.Count))
                 .ToList();
+        }
+
+        /// <summary>
+        /// Builds similarity groups using the supplied options.
+        /// </summary>
+        internal static IReadOnlyList<IReadOnlyList<string>> BuildSimilarityGroups(
+            IEnumerable<string> words,
+            FuzzyScorerOptions options,
+            CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            options.Validate();
+
+            return BuildSimilarityGroups(
+                words,
+                options.MaxEditDistance,
+                MaxSimilarityComparisons,
+                forceIndex: false,
+                options.MinWordLengthForFuzzy,
+                options.Grouping,
+                cancellationToken);
         }
 
         /// <summary>
@@ -223,7 +358,14 @@ namespace FuzzyScorer
         /// <exception cref="ArgumentOutOfRangeException">Thrown if maxEditDistance is out of range.</exception>
         internal static IReadOnlyList<IReadOnlyList<string>> BuildSimilarityGroups(IEnumerable<string> words, int maxEditDistance, CancellationToken cancellationToken)
         {
-            return BuildSimilarityGroups(words, maxEditDistance, MaxSimilarityComparisons, forceIndex: false, cancellationToken);
+            return BuildSimilarityGroups(
+                words,
+                maxEditDistance,
+                MaxSimilarityComparisons,
+                forceIndex: false,
+                minWordLengthForFuzzy: 0,
+                GroupingMode.Leader,
+                cancellationToken);
         }
 
         /// <summary>
@@ -233,7 +375,14 @@ namespace FuzzyScorer
         /// </summary>
         internal static IReadOnlyList<IReadOnlyList<string>> BuildSimilarityGroups(IEnumerable<string> words, int maxEditDistance, long comparisonLimit, CancellationToken cancellationToken)
         {
-            return BuildSimilarityGroups(words, maxEditDistance, comparisonLimit, forceIndex: false, cancellationToken);
+            return BuildSimilarityGroups(
+                words,
+                maxEditDistance,
+                comparisonLimit,
+                forceIndex: false,
+                minWordLengthForFuzzy: 0,
+                GroupingMode.Leader,
+                cancellationToken);
         }
 
         /// <summary>
@@ -242,24 +391,70 @@ namespace FuzzyScorer
         /// </summary>
         internal static IReadOnlyList<IReadOnlyList<string>> BuildSimilarityGroups(IEnumerable<string> words, int maxEditDistance, long comparisonLimit, bool forceIndex, CancellationToken cancellationToken)
         {
+            return BuildSimilarityGroups(
+                words,
+                maxEditDistance,
+                comparisonLimit,
+                forceIndex,
+                minWordLengthForFuzzy: 0,
+                GroupingMode.Leader,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Builds similarity groups with explicit budget, minimum fuzzy length, and
+        /// grouping mode.
+        /// </summary>
+        internal static IReadOnlyList<IReadOnlyList<string>> BuildSimilarityGroups(
+            IEnumerable<string> words,
+            int maxEditDistance,
+            long comparisonLimit,
+            bool forceIndex,
+            int minWordLengthForFuzzy,
+            GroupingMode groupingMode,
+            CancellationToken cancellationToken)
+        {
             ArgumentNullException.ThrowIfNull(words);
 
             ValidateEditDistance(maxEditDistance);
+
+            if (minWordLengthForFuzzy < 0 || minWordLengthForFuzzy > MaxWordLength)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(minWordLengthForFuzzy),
+                    minWordLengthForFuzzy,
+                    $"minWordLengthForFuzzy must be between 0 and {MaxWordLength}.");
+            }
+
+            if (groupingMode is not GroupingMode.Leader and not GroupingMode.ConnectedComponents)
+                throw new ArgumentOutOfRangeException(nameof(groupingMode), groupingMode, "Unknown grouping mode.");
+
+            var wordList = words as List<string> ?? words.ToList();
+
+            if (groupingMode == GroupingMode.ConnectedComponents)
+            {
+                return BuildConnectedComponents(
+                    wordList,
+                    maxEditDistance,
+                    comparisonLimit,
+                    minWordLengthForFuzzy,
+                    cancellationToken);
+            }
 
             var groups = new List<List<string>>();
             var leaderLowers = new List<string>();
             var leaderLengths = new List<int>();
             var groupByLowerWord = new Dictionary<string, int>(StringComparer.Ordinal);
             var budget = new ComparisonBudget(comparisonLimit);
-            var wordList = words as IReadOnlyList<string> ?? words.ToList();
+            bool fuzzyEnabled = maxEditDistance > 0;
 
             IWordIndex? index = null;
-            if (maxEditDistance is > 0 and <= DeletionIndexMaxEditDistance
+            if (fuzzyEnabled && maxEditDistance <= DeletionIndexMaxEditDistance
                 && EstimateVariantCount(wordList, maxEditDistance) <= MaxIndexedVariants)
             {
                 index = new DeletionIndex(maxEditDistance, budget);
             }
-            else if (maxEditDistance is > 0 and <= IndexedSearchMaxEditDistance
+            else if (fuzzyEnabled && maxEditDistance <= IndexedSearchMaxEditDistance
                 && (forceIndex || wordList.Count >= IndexedSearchMinWords))
             {
                 index = new SimilarityIndex(budget);
@@ -282,7 +477,7 @@ namespace FuzzyScorer
 
                 int matchIndex = -1;
 
-                if (maxEditDistance > 0)
+                if (fuzzyEnabled && lowerWord.Length >= minWordLengthForFuzzy)
                 {
                     if (index is not null)
                     {
@@ -292,6 +487,9 @@ namespace FuzzyScorer
                     {
                         for (int i = 0; i < groups.Count; i++)
                         {
+                            if (leaderLengths[i] < minWordLengthForFuzzy)
+                                continue;
+
                             if (Math.Abs(lowerWord.Length - leaderLengths[i]) > maxEditDistance)
                                 continue;
 
@@ -316,11 +514,118 @@ namespace FuzzyScorer
                     groups.Add(new List<string> { word });
                     leaderLowers.Add(lowerWord);
                     leaderLengths.Add(lowerWord.Length);
-                    index?.Add(lowerWord, groups.Count - 1);
+
+                    if (lowerWord.Length >= minWordLengthForFuzzy)
+                        index?.Add(lowerWord, groups.Count - 1);
                 }
             }
 
             return (IReadOnlyList<IReadOnlyList<string>>)groups;
+        }
+
+        /// <summary>
+        /// Groups words by transitive similarity (connected components). Every pair of
+        /// distinct words is considered, subject to the length filter and the budget.
+        /// </summary>
+        private static List<IReadOnlyList<string>> BuildConnectedComponents(
+            List<string> words,
+            int maxEditDistance,
+            long comparisonLimit,
+            int minWordLengthForFuzzy,
+            CancellationToken cancellationToken)
+        {
+            var uniqueWords = new List<string>();
+            var lowerWords = new List<string>();
+            var indexByLowerWord = new Dictionary<string, int>(StringComparer.Ordinal);
+
+            foreach (var word in words)
+            {
+                if (word is null)
+                    throw new ArgumentException("Word collection cannot contain null elements.", nameof(words));
+
+                var lowerWord = word.ToLowerInvariant();
+                if (indexByLowerWord.ContainsKey(lowerWord))
+                    continue;
+
+                indexByLowerWord[lowerWord] = uniqueWords.Count;
+                uniqueWords.Add(word);
+                lowerWords.Add(lowerWord);
+            }
+
+            var parents = new int[uniqueWords.Count];
+            for (int i = 0; i < parents.Length; i++)
+                parents[i] = i;
+
+            var budget = new ComparisonBudget(comparisonLimit);
+
+            for (int i = 0; i < uniqueWords.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (lowerWords[i].Length < minWordLengthForFuzzy)
+                    continue;
+
+                for (int j = i + 1; j < uniqueWords.Count; j++)
+                {
+                    if (lowerWords[j].Length < minWordLengthForFuzzy)
+                        continue;
+
+                    if (Math.Abs(lowerWords[i].Length - lowerWords[j].Length) > maxEditDistance)
+                        continue;
+
+                    budget.Count();
+                    if (ComputeEditDistance(lowerWords[i], lowerWords[j], maxEditDistance) >= 0)
+                        Union(parents, i, j);
+                }
+            }
+
+            var groupsByRoot = new Dictionary<int, List<string>>();
+            var groupOrder = new List<int>();
+
+            foreach (var word in words)
+            {
+                int root = Find(parents, indexByLowerWord[word.ToLowerInvariant()]);
+
+                if (!groupsByRoot.TryGetValue(root, out var group))
+                {
+                    group = new List<string>();
+                    groupsByRoot[root] = group;
+                    groupOrder.Add(root);
+                }
+
+                group.Add(word);
+            }
+
+            var result = new List<IReadOnlyList<string>>(groupOrder.Count);
+            foreach (int root in groupOrder)
+                result.Add(groupsByRoot[root]);
+
+            return result;
+        }
+
+        private static int Find(int[] parents, int index)
+        {
+            while (parents[index] != index)
+            {
+                parents[index] = parents[parents[index]];
+                index = parents[index];
+            }
+
+            return index;
+        }
+
+        private static void Union(int[] parents, int first, int second)
+        {
+            int firstRoot = Find(parents, first);
+            int secondRoot = Find(parents, second);
+
+            if (firstRoot == secondRoot)
+                return;
+
+            if (firstRoot < secondRoot)
+                parents[secondRoot] = firstRoot;
+            else
+                parents[firstRoot] = secondRoot;
         }
 
         /// <summary>
@@ -500,10 +805,21 @@ namespace FuzzyScorer
         /// </summary>
         internal static List<KeyValuePair<string, int>> CountWords(string inputText, CancellationToken cancellationToken)
         {
+            return CountWords(inputText, DefaultOptions, cancellationToken);
+        }
+
+        /// <summary>
+        /// Counts words in a single pass, preserving first-seen order and spelling.
+        /// </summary>
+        internal static List<KeyValuePair<string, int>> CountWords(
+            string inputText,
+            FuzzyScorerOptions options,
+            CancellationToken cancellationToken)
+        {
             var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var order = new List<string>();
 
-            foreach (var (word, _) in EnumerateWords(inputText, cancellationToken))
+            foreach (var (word, _) in EnumerateWords(inputText, options, cancellationToken))
             {
                 if (counts.TryGetValue(word, out int count))
                 {
@@ -524,12 +840,22 @@ namespace FuzzyScorer
         }
 
         /// <summary>
-        /// Strips non-alphanumeric characters (except hyphens and whitespace),
-        /// splits into words, and enforces security limits.
+        /// Strips non-alphanumeric characters, splits into words, and enforces security limits.
         /// </summary>
         internal static List<string> NormalizeAndExtractWords(string inputText, CancellationToken cancellationToken)
         {
-            return EnumerateWords(inputText, cancellationToken)
+            return NormalizeAndExtractWords(inputText, DefaultOptions, cancellationToken);
+        }
+
+        /// <summary>
+        /// Strips non-alphanumeric characters, splits into words, and enforces the supplied limits.
+        /// </summary>
+        internal static List<string> NormalizeAndExtractWords(
+            string inputText,
+            FuzzyScorerOptions options,
+            CancellationToken cancellationToken)
+        {
+            return EnumerateWords(inputText, options, cancellationToken)
                 .Select(entry => entry.Word)
                 .ToList();
         }
@@ -540,9 +866,30 @@ namespace FuzzyScorer
         /// </summary>
         internal static string NormalizeUnicode(string text)
         {
+            return NormalizeUnicode(text, ignoreDiacritics: false);
+        }
+
+        /// <summary>
+        /// Normalizes text to Unicode form C, optionally removing diacritics.
+        /// Returns the original text when it contains invalid UTF-16 sequences.
+        /// </summary>
+        internal static string NormalizeUnicode(string text, bool ignoreDiacritics)
+        {
             try
             {
-                return text.Normalize(NormalizationForm.FormC);
+                if (!ignoreDiacritics)
+                    return text.Normalize(NormalizationForm.FormC);
+
+                var decomposed = text.Normalize(NormalizationForm.FormD);
+                var builder = new StringBuilder(decomposed.Length);
+
+                foreach (char character in decomposed)
+                {
+                    if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+                        builder.Append(character);
+                }
+
+                return builder.ToString().Normalize(NormalizationForm.FormC);
             }
             catch (ArgumentException)
             {
@@ -557,13 +904,22 @@ namespace FuzzyScorer
         /// </summary>
         internal static List<string> TokenizeLine(string line)
         {
+            return TokenizeLine(line, MaxWordLength, stripEdgeHyphens: true);
+        }
+
+        /// <summary>
+        /// Replaces punctuation and control characters with spaces, splits the line
+        /// into words, and applies the supplied word rules.
+        /// </summary>
+        internal static List<string> TokenizeLine(string line, int maxWordLength, bool stripEdgeHyphens)
+        {
             var normalized = WordNormalizationRegex.Replace(line, " ");
             var words = new List<string>();
 
             foreach (var rawWord in normalized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
             {
-                var word = NormalizeWord(rawWord);
-                if (word.Length == 0 || word.Length > MaxWordLength)
+                var word = NormalizeWord(rawWord, stripEdgeHyphens);
+                if (word.Length == 0 || word.Length > maxWordLength)
                     continue;
 
                 words.Add(word);
@@ -572,26 +928,30 @@ namespace FuzzyScorer
             return words;
         }
 
-        private static string NormalizeWord(string word)
+        private static string NormalizeWord(string word, bool stripEdgeHyphens)
         {
             // Apostrophes are removed instead of treated as separators so that
             // contractions remain a single token ("don't" -> "dont").
-            return word
+            var normalized = word
                 .Replace("'", string.Empty)
-                .Replace("\u2019", string.Empty)
-                .Trim('-');
+                .Replace("\u2019", string.Empty);
+
+            return stripEdgeHyphens ? normalized.Trim('-') : normalized;
         }
 
         /// <summary>
         /// Normalizes the input and yields each word with its 1-based line number,
         /// enforcing the security limits.
         /// </summary>
-        private static IEnumerable<(string Word, int LineNumber)> EnumerateWords(string inputText, CancellationToken cancellationToken)
+        private static IEnumerable<(string Word, int LineNumber)> EnumerateWords(
+            string inputText,
+            FuzzyScorerOptions options,
+            CancellationToken cancellationToken)
         {
-            if (inputText.Length > MaxInputLength)
-                throw new ArgumentException($"Input exceeds maximum length of {MaxInputLength} characters", nameof(inputText));
+            if (inputText.Length > options.MaxInputLength)
+                throw new ArgumentException($"Input exceeds maximum length of {options.MaxInputLength} characters", nameof(inputText));
 
-            var lines = NormalizeUnicode(inputText).Split('\n');
+            var lines = NormalizeUnicode(inputText, options.IgnoreDiacritics).Split('\n');
             int wordCount = 0;
 
             for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
@@ -599,11 +959,11 @@ namespace FuzzyScorer
                 cancellationToken.ThrowIfCancellationRequested();
 
                 int lineNumber = lineIndex + 1;
-                foreach (var word in TokenizeLine(lines[lineIndex]))
+                foreach (var word in TokenizeLine(lines[lineIndex], options.MaxWordLength, options.StripEdgeHyphens))
                 {
                     wordCount++;
-                    if (wordCount > MaxWordsPerText)
-                        throw new ArgumentException($"Input contains {wordCount} words, exceeding limit of {MaxWordsPerText}", nameof(inputText));
+                    if (wordCount > options.MaxWordsPerText)
+                        throw new ArgumentException($"Input contains more than {options.MaxWordsPerText} words, exceeding limit of {options.MaxWordsPerText}", nameof(inputText));
 
                     yield return (word, lineNumber);
                 }
@@ -616,14 +976,26 @@ namespace FuzzyScorer
         /// </summary>
         internal static List<(string Word, int LineNumber)> NormalizeAndExtractWordsWithLines(string inputText, CancellationToken cancellationToken)
         {
-            return EnumerateWords(inputText, cancellationToken).ToList();
+            return NormalizeAndExtractWordsWithLines(inputText, DefaultOptions, cancellationToken);
+        }
+
+        /// <summary>
+        /// Normalizes the input, splits it into words, records the 1-based
+        /// line number of each occurrence, and enforces the supplied limits.
+        /// </summary>
+        internal static List<(string Word, int LineNumber)> NormalizeAndExtractWordsWithLines(
+            string inputText,
+            FuzzyScorerOptions options,
+            CancellationToken cancellationToken)
+        {
+            return EnumerateWords(inputText, options, cancellationToken).ToList();
         }
 
         /// <summary>
         /// Estimates the number of distinct deletion variants needed for the index.
         /// The estimate is an upper bound; it only decides whether the index is affordable.
         /// </summary>
-        private static long EstimateVariantCount(IReadOnlyList<string> words, int maxDistance)
+        private static long EstimateVariantCount(List<string> words, int maxDistance)
         {
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             long total = 0;
@@ -702,7 +1074,7 @@ namespace FuzzyScorer
             private const ulong FnvPrime = 1099511628211UL;
 
             private readonly Dictionary<ulong, List<int>> _variants = new();
-            private readonly List<string> _leaders = new();
+            private readonly Dictionary<int, string> _leaders = new();
             private readonly HashSet<ulong> _generated = new();
             private readonly HashSet<int> _candidates = new();
             private readonly List<int> _orderedCandidates = new();
@@ -717,7 +1089,7 @@ namespace FuzzyScorer
 
             public void Add(string word, int groupIndex)
             {
-                _leaders.Add(word);
+                _leaders[groupIndex] = word;
                 _generated.Clear();
                 GenerateVariantHashes(word, _maxDistance);
 
@@ -757,7 +1129,9 @@ namespace FuzzyScorer
 
                 foreach (int index in _orderedCandidates)
                 {
-                    var leader = _leaders[index];
+                    if (!_leaders.TryGetValue(index, out var leader))
+                        continue;
+
                     if (leader.Length > word.Length + maxDistance || leader.Length < word.Length - maxDistance)
                         continue;
 

@@ -19,9 +19,9 @@ namespace FuzzyScorer.Tests
             var results = WordScorer.GetWordFrequencies(inputText);
 
             Assert.Equal(3, results.Count);
-            Assert.Equal(3, results.First(r => r.Text == "apple").Score);
-            Assert.Equal(2, results.First(r => r.Text == "banana").Score);
-            Assert.Equal(1, results.First(r => r.Text == "cherry").Score);
+            Assert.Equal(3, results.First(r => r.Text == "apple").Count);
+            Assert.Equal(2, results.First(r => r.Text == "banana").Count);
+            Assert.Equal(1, results.First(r => r.Text == "cherry").Count);
         }
 
         [Fact]
@@ -47,7 +47,7 @@ namespace FuzzyScorer.Tests
             var results = WordScorer.GetWordFrequencies("Apple apple APPLE");
 
             Assert.Single(results);
-            Assert.Equal(3, results[0].Score);
+            Assert.Equal(3, results[0].Count);
         }
 
         [Fact]
@@ -90,7 +90,7 @@ namespace FuzzyScorer.Tests
             var results = WordScorer.GroupSimilarWords(inputText, 1);
 
             Assert.Single(results);
-            Assert.Equal(3, results[0].Score);
+            Assert.Equal(3, results[0].Count);
             Assert.Equal("apple", results[0].Text, ignoreCase: true);
         }
 
@@ -114,7 +114,7 @@ namespace FuzzyScorer.Tests
             var results = WordScorer.GroupSimilarWords(inputText, 10);
 
             Assert.Single(results);
-            Assert.Equal(3, results[0].Score);
+            Assert.Equal(3, results[0].Count);
         }
 
         [Fact]
@@ -225,8 +225,8 @@ namespace FuzzyScorer.Tests
             string inputText = "apple banana apple cherry banana apple";
             var result = await _scorer.ScoreAsync(inputText, 0.0, CancellationToken.None);
 
-            Assert.Equal(6, result.OriginalSize);
-            Assert.Equal(3, result.CompressedSize);
+            Assert.Equal(6, result.TotalWords);
+            Assert.Equal(3, result.UniqueGroups);
             Assert.Empty(result.Errors);
         }
 
@@ -236,11 +236,11 @@ namespace FuzzyScorer.Tests
             string inputText = "apple aple apple";
             var result = await _scorer.ScoreAsync(inputText, 0.02, CancellationToken.None);
 
-            Assert.Equal(3, result.OriginalSize);
-            Assert.Equal(1, result.CompressedSize);
+            Assert.Equal(3, result.TotalWords);
+            Assert.Equal(1, result.UniqueGroups);
             Assert.Single(result.Errors);
-            Assert.Equal("aple", result.Errors[0].ErrorText);
-            Assert.Equal(1, result.Errors[0].RepetitionCount);
+            Assert.Equal("aple", result.Errors[0].Text);
+            Assert.Equal(1, result.Errors[0].Occurrences);
         }
 
         [Fact]
@@ -249,8 +249,8 @@ namespace FuzzyScorer.Tests
             string inputText = "apple aple";
             var result = await _scorer.ScoreAsync(inputText, 0.0, CancellationToken.None);
 
-            Assert.Equal(2, result.OriginalSize);
-            Assert.Equal(2, result.CompressedSize);
+            Assert.Equal(2, result.TotalWords);
+            Assert.Equal(2, result.UniqueGroups);
             Assert.Empty(result.Errors);
         }
 
@@ -260,8 +260,8 @@ namespace FuzzyScorer.Tests
             string inputText = "apple aple";
             var result = await _scorer.ScoreAsync(inputText, 1.0, CancellationToken.None);
 
-            Assert.Equal(2, result.OriginalSize);
-            Assert.Equal(1, result.CompressedSize);
+            Assert.Equal(2, result.TotalWords);
+            Assert.Equal(1, result.UniqueGroups);
             Assert.Single(result.Errors);
         }
 
@@ -270,8 +270,8 @@ namespace FuzzyScorer.Tests
         {
             var result = await _scorer.ScoreAsync("", 0.5, CancellationToken.None);
 
-            Assert.Equal(0, result.OriginalSize);
-            Assert.Equal(0, result.CompressedSize);
+            Assert.Equal(0, result.TotalWords);
+            Assert.Equal(0, result.UniqueGroups);
             Assert.Empty(result.Errors);
         }
 
@@ -280,8 +280,8 @@ namespace FuzzyScorer.Tests
         {
             var result = await _scorer.ScoreAsync("   ", 0.5, CancellationToken.None);
 
-            Assert.Equal(0, result.OriginalSize);
-            Assert.Equal(0, result.CompressedSize);
+            Assert.Equal(0, result.TotalWords);
+            Assert.Equal(0, result.UniqueGroups);
             Assert.Empty(result.Errors);
         }
 
@@ -292,8 +292,8 @@ namespace FuzzyScorer.Tests
             var result = await _scorer.ScoreAsync(inputText, 0.02, CancellationToken.None);
 
             Assert.Single(result.Errors);
-            Assert.Equal("aple", result.Errors[0].ErrorText);
-            Assert.Equal(1, result.Errors[0].RepetitionCount);
+            Assert.Equal("aple", result.Errors[0].Text);
+            Assert.Equal(1, result.Errors[0].Occurrences);
             Assert.Contains(3, result.Errors[0].LineNumbers);
         }
 
@@ -328,10 +328,10 @@ namespace FuzzyScorer.Tests
 
             var result = await _scorer.ScoreAsync(inputText, 0.02, CancellationToken.None);
 
-            Assert.Equal(2, result.CompressedSize);
+            Assert.Equal(2, result.UniqueGroups);
             Assert.Equal(2, result.Errors.Count);
-            Assert.Contains(result.Errors, e => e.ErrorText == "aple");
-            Assert.Contains(result.Errors, e => e.ErrorText == "appple");
+            Assert.Contains(result.Errors, e => e.Text == "aple");
+            Assert.Contains(result.Errors, e => e.Text == "appple");
         }
 
         [Fact]
@@ -342,7 +342,7 @@ namespace FuzzyScorer.Tests
             var result = await _scorer.ScoreAsync(inputText, 0.02, CancellationToken.None);
 
             Assert.Single(result.Errors);
-            Assert.Equal("aple", result.Errors[0].ErrorText);
+            Assert.Equal("aple", result.Errors[0].Text);
         }
 
         #endregion
@@ -468,12 +468,12 @@ namespace FuzzyScorer.Tests
 
             var result = await _scorer.ScoreAsync(inputText, 0.02, CancellationToken.None);
 
-            Assert.Equal(4, result.OriginalSize);
-            Assert.Equal(1, result.CompressedSize);
+            Assert.Equal(4, result.TotalWords);
+            Assert.Equal(1, result.UniqueGroups);
 
-            var apleError = result.Errors.FirstOrDefault(e => e.ErrorText == "aple");
+            var apleError = result.Errors.FirstOrDefault(e => e.Text == "aple");
             Assert.NotNull(apleError);
-            Assert.Equal(1, apleError.RepetitionCount);
+            Assert.Equal(1, apleError.Occurrences);
         }
 
         [Fact]
@@ -484,7 +484,7 @@ namespace FuzzyScorer.Tests
             var normalizedWords = WordScorer.NormalizeAndExtractWords(inputText, CancellationToken.None);
             var result = await _scorer.ScoreAsync(inputText, 0.0, CancellationToken.None);
 
-            Assert.Equal(normalizedWords.Count, result.OriginalSize);
+            Assert.Equal(normalizedWords.Count, result.TotalWords);
         }
 
         [Fact]
@@ -495,8 +495,8 @@ namespace FuzzyScorer.Tests
 
             var result = await _scorer.ScoreAsync(inputText, 0.0, CancellationToken.None);
 
-            Assert.Equal(2, result.OriginalSize);
-            Assert.Equal(2, result.CompressedSize);
+            Assert.Equal(2, result.TotalWords);
+            Assert.Equal(2, result.UniqueGroups);
         }
 
         #endregion
@@ -504,10 +504,10 @@ namespace FuzzyScorer.Tests
         #region Model Constructor Validation Tests
 
         [Fact]
-        public void WordScore_NegativeScore_Throws()
+        public void WordScore_NegativeCount_Throws()
         {
             var ex = Assert.Throws<ArgumentException>(() => new WordScore("text", -1));
-            Assert.Contains("Score", ex.Message);
+            Assert.Contains("Count", ex.Message);
         }
 
         [Fact]
@@ -527,13 +527,13 @@ namespace FuzzyScorer.Tests
         [Fact]
         public void FuzzyScorerResult_NegativeSize_Throws()
         {
-            var ex1 = Assert.Throws<ArgumentException>(() =>
+            var ex1 = Assert.Throws<ArgumentOutOfRangeException>(() =>
                 new FuzzyScorerResult(-1, 0, new List<ErrorEntry>()));
-            Assert.Contains("OriginalSize", ex1.Message);
+            Assert.Contains("TotalWords", ex1.Message);
 
-            var ex2 = Assert.Throws<ArgumentException>(() =>
+            var ex2 = Assert.Throws<ArgumentOutOfRangeException>(() =>
                 new FuzzyScorerResult(0, -1, new List<ErrorEntry>()));
-            Assert.Contains("CompressedSize", ex2.Message);
+            Assert.Contains("UniqueGroups", ex2.Message);
         }
 
         #endregion

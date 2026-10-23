@@ -57,7 +57,7 @@ namespace FuzzyScorer.Tests
                 for (int i = 0; i < expected.Count; i++)
                 {
                     Assert.Equal(expected[i][0], actual[i].Text);
-                    Assert.Equal(expected[i].Count, actual[i].Score);
+                    Assert.Equal(expected[i].Count, actual[i].Count);
                 }
             }
         }

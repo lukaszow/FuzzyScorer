@@ -22,6 +22,6 @@ namespace FuzzyScorer
         /// <returns>A <see cref="FuzzyScorerResult"/> containing the analysis results.</returns>
         /// <exception cref="System.ArgumentException">Thrown if inputText exceeds limits or sensitivity is out of range.</exception>
         /// <exception cref="System.OperationCanceledException">Thrown if the operation is cancelled.</exception>
-        Task<FuzzyScorerResult> ScoreAsync(string inputText, double sensitivity, CancellationToken cancellationToken);
+        Task<FuzzyScorerResult> ScoreAsync(string inputText, double sensitivity, CancellationToken cancellationToken = default);
     }
 }
