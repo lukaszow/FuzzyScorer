@@ -70,36 +70,69 @@ namespace FuzzyScorer
 
             foreach (var group in groups)
             {
-                if (group.Count <= 1)
+                // One entry per distinct spelling, regardless of how many times it occurs.
+                var distinctWords = group
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (distinctWords.Count <= 1)
                     continue;
 
-                string? mostFrequent = null;
-                int maxFreq = -1;
-                foreach (var word in group)
+                string mostFrequent = distinctWords[0];
+                int maxFreq = GetFrequency(mostFrequent, freqDict);
+
+                foreach (var word in distinctWords)
                 {
-                    int freq = freqDict.TryGetValue(word, out var f) ? f : 1;
-                    if (freq > maxFreq)
+                    int freq = GetFrequency(word, freqDict);
+                    if (IsBetterRepresentative(word, freq, mostFrequent, maxFreq))
                     {
-                        maxFreq = freq;
                         mostFrequent = word;
+                        maxFreq = freq;
                     }
                 }
 
-                foreach (var word in group)
+                foreach (var word in distinctWords)
                 {
                     if (string.Equals(word, mostFrequent, StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    int freq = freqDict.TryGetValue(word, out var f) ? f : 1;
                     var lineNumbers = wordLineMap.TryGetValue(word, out var lines)
-                        ? lines.OrderBy(x => x).ToList()
+                        ? lines.Distinct().OrderBy(x => x).ToList()
                         : new List<int>();
 
-                    errors.Add(new ErrorEntry(word, freq, lineNumbers));
+                    errors.Add(new ErrorEntry(word, GetFrequency(word, freqDict), lineNumbers));
                 }
             }
 
-            return errors;
+            return errors
+                .OrderBy(e => e.LineNumbers.Count > 0 ? e.LineNumbers[0] : int.MaxValue)
+                .ThenBy(e => e.ErrorText, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Selects the group representative: most frequent, then longest,
+        /// then the first in ordinal order. The ranking is deterministic and
+        /// treats deletions (shorter typos) as the most likely variants.
+        /// </summary>
+        private static bool IsBetterRepresentative(
+            string candidate,
+            int candidateFrequency,
+            string current,
+            int currentFrequency)
+        {
+            if (candidateFrequency != currentFrequency)
+                return candidateFrequency > currentFrequency;
+
+            if (candidate.Length != current.Length)
+                return candidate.Length > current.Length;
+
+            return string.Compare(candidate, current, StringComparison.OrdinalIgnoreCase) < 0;
+        }
+
+        private static int GetFrequency(string word, Dictionary<string, int> freqDict)
+        {
+            return freqDict.TryGetValue(word, out var frequency) ? frequency : 1;
         }
 
         private static Dictionary<string, List<int>> BuildWordLineMap(List<(string Word, int LineNumber)> wordsWithLines)

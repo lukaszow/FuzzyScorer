@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
@@ -31,9 +32,7 @@ namespace FuzzyScorer
         /// </summary>
         public const int MaxSimilarityComparisons = 10_000_000;
 
-        internal static readonly Regex WordNormalizationRegex = new Regex(@"[^\p{L}\p{N}\s-]", RegexOptions.Compiled);
-
-        private static readonly char[] WordSeparators = { ' ', '\t', '\n', '\r' };
+        internal static readonly Regex WordNormalizationRegex = new Regex(@"[^\p{L}\p{N}'\u2019\-]+", RegexOptions.Compiled);
 
         /// <summary>
         /// Returns word frequency counts from the input text.
@@ -80,7 +79,8 @@ namespace FuzzyScorer
         /// Maximum allowed difference for similarity. Must be between 0 and <see cref="MaxEditDistanceLimit"/>.
         /// </param>
         /// <returns>A list of WordScore objects where similar words are merged into a single entry.</returns>
-        /// <exception cref="ArgumentException">Thrown if parameters exceed limits.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="maxEditDistance"/> is outside the allowed range.</exception>
+        /// <exception cref="ArgumentException">Thrown if inputText exceeds size limits.</exception>
         public static IReadOnlyList<WordScore> GroupSimilarWords(string? inputText, int maxEditDistance)
         {
             return GroupSimilarWords(inputText, maxEditDistance, CancellationToken.None);
@@ -97,7 +97,8 @@ namespace FuzzyScorer
         /// </param>
         /// <param name="cancellationToken">Cancellation token for aborting the operation.</param>
         /// <returns>A list of WordScore objects where similar words are merged into a single entry.</returns>
-        /// <exception cref="ArgumentException">Thrown if parameters exceed limits.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="maxEditDistance"/> is outside the allowed range.</exception>
+        /// <exception cref="ArgumentException">Thrown if inputText exceeds size limits.</exception>
         /// <exception cref="OperationCanceledException">Thrown if operation is cancelled.</exception>
         public static IReadOnlyList<WordScore> GroupSimilarWords(string? inputText, int maxEditDistance, CancellationToken cancellationToken)
         {
@@ -121,8 +122,9 @@ namespace FuzzyScorer
         /// </param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of similarity groups.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if words is null.</exception>
-        /// <exception cref="ArgumentException">Thrown if maxEditDistance or the comparison budget is exceeded.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="words"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown if <paramref name="words"/> contains a null element.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="maxEditDistance"/> is outside the allowed range.</exception>
         public static IReadOnlyList<IReadOnlyList<string>> GroupWordsBySimilarity(IEnumerable<string> words, int maxEditDistance, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(words);
@@ -142,7 +144,7 @@ namespace FuzzyScorer
         /// Maximum allowed edit distance. Must be between 0 and <see cref="MaxEditDistanceLimit"/>.
         /// </param>
         /// <exception cref="ArgumentNullException">Thrown if word1 or word2 is null.</exception>
-        /// <exception cref="ArgumentException">Thrown if maxEditDistance is out of range.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if maxEditDistance is out of range.</exception>
         public static bool AreWordsSimilar(string word1, string word2, int maxEditDistance)
         {
             ArgumentNullException.ThrowIfNull(word1);
@@ -191,7 +193,8 @@ namespace FuzzyScorer
         /// all words assigned to one group. The first occurrence becomes the group leader.
         /// </summary>
         /// <exception cref="ArgumentNullException">Thrown if words is null.</exception>
-        /// <exception cref="ArgumentException">Thrown if maxEditDistance is out of range or the comparison budget is exceeded.</exception>
+        /// <exception cref="ArgumentException">Thrown if the collection contains a null element or the comparison budget is exceeded.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if maxEditDistance is out of range.</exception>
         internal static IReadOnlyList<IReadOnlyList<string>> BuildSimilarityGroups(IEnumerable<string> words, int maxEditDistance, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(words);
@@ -205,6 +208,10 @@ namespace FuzzyScorer
             foreach (var word in words)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                if (word is null)
+                    throw new ArgumentException("Word collection cannot contain null elements.", nameof(words));
+
                 var lowerWord = word.ToLowerInvariant();
 
                 bool addedToGroup = false;
@@ -303,7 +310,10 @@ namespace FuzzyScorer
         private static void ValidateEditDistance(int maxEditDistance)
         {
             if (maxEditDistance < 0 || maxEditDistance > MaxEditDistanceLimit)
-                throw new ArgumentException($"maxEditDistance must be between 0 and {MaxEditDistanceLimit}", nameof(maxEditDistance));
+                throw new ArgumentOutOfRangeException(
+                    nameof(maxEditDistance),
+                    maxEditDistance,
+                    $"maxEditDistance must be between 0 and {MaxEditDistanceLimit}.");
         }
 
         /// <summary>
@@ -318,7 +328,55 @@ namespace FuzzyScorer
         }
 
         /// <summary>
-        /// Strips non-alphanumeric characters, splits into words, records the 1-based
+        /// Normalizes text to Unicode canonical composition (form C).
+        /// Returns the original text when it contains invalid UTF-16 sequences.
+        /// </summary>
+        internal static string NormalizeUnicode(string text)
+        {
+            try
+            {
+                return text.Normalize(NormalizationForm.FormC);
+            }
+            catch (ArgumentException)
+            {
+                // Invalid surrogate pairs cannot be normalized; process the raw text instead.
+                return text;
+            }
+        }
+
+        /// <summary>
+        /// Replaces punctuation and control characters with spaces, splits the line
+        /// into words, removes apostrophes and edge hyphens, and enforces the word length limit.
+        /// </summary>
+        internal static List<string> TokenizeLine(string line)
+        {
+            var normalized = WordNormalizationRegex.Replace(line, " ");
+            var words = new List<string>();
+
+            foreach (var rawWord in normalized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var word = NormalizeWord(rawWord);
+                if (word.Length == 0 || word.Length > MaxWordLength)
+                    continue;
+
+                words.Add(word);
+            }
+
+            return words;
+        }
+
+        private static string NormalizeWord(string word)
+        {
+            // Apostrophes are removed instead of treated as separators so that
+            // contractions remain a single token ("don't" -> "dont").
+            return word
+                .Replace("'", string.Empty)
+                .Replace("\u2019", string.Empty)
+                .Trim('-');
+        }
+
+        /// <summary>
+        /// Normalizes the input, splits it into words, records the 1-based
         /// line number of each occurrence, and enforces security limits.
         /// </summary>
         internal static List<(string Word, int LineNumber)> NormalizeAndExtractWordsWithLines(string inputText, CancellationToken cancellationToken)
@@ -329,21 +387,15 @@ namespace FuzzyScorer
                 throw new ArgumentException($"Input exceeds maximum length of {MaxInputLength} characters", nameof(inputText));
 
             var results = new List<(string Word, int LineNumber)>();
-            var lines = inputText.Split('\n');
+            var lines = NormalizeUnicode(inputText).Split('\n');
 
             for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var normalized = WordNormalizationRegex.Replace(lines[lineIndex], "");
-                var words = normalized.Split(WordSeparators, StringSplitOptions.RemoveEmptyEntries);
-
                 int lineNumber = lineIndex + 1;
-                foreach (var word in words)
+                foreach (var word in TokenizeLine(lines[lineIndex]))
                 {
-                    if (word.Length > MaxWordLength)
-                        continue;
-
                     results.Add((word, lineNumber));
                 }
             }

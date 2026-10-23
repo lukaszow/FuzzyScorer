@@ -127,17 +127,17 @@ namespace FuzzyScorer.Tests
         }
 
         [Fact]
-        public void Similarity_NegativeEditDistance_ShouldThrowArgumentException()
+        public void Similarity_NegativeEditDistance_ShouldThrowArgumentOutOfRangeException()
         {
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() =>
                 WordScorer.GroupSimilarWords("apple banana", -1));
             Assert.Contains("maxEditDistance", ex.Message);
         }
 
         [Fact]
-        public void Similarity_EditDistanceExceedsLimit_ShouldThrowArgumentException()
+        public void Similarity_EditDistanceExceedsLimit_ShouldThrowArgumentOutOfRangeException()
         {
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() =>
                 WordScorer.GroupSimilarWords("apple banana", 51));
             Assert.Contains("maxEditDistance", ex.Message);
         }
@@ -324,7 +324,7 @@ namespace FuzzyScorer.Tests
         [Fact]
         public async Task ScoreAsync_MultipleTyposInGroup_AllReported()
         {
-            string inputText = "apple aple appple banana";
+            string inputText = "apple apple aple appple banana";
 
             var result = await _scorer.ScoreAsync(inputText, 0.02, CancellationToken.None);
 
@@ -548,10 +548,10 @@ namespace FuzzyScorer.Tests
         }
 
         [Fact]
-        public void AreWordsSimilar_InvalidDistance_ThrowsArgumentException()
+        public void AreWordsSimilar_InvalidDistance_ThrowsArgumentOutOfRangeException()
         {
-            Assert.Throws<ArgumentException>(() => WordScorer.AreWordsSimilar("a", "b", -1));
-            Assert.Throws<ArgumentException>(() => WordScorer.AreWordsSimilar("a", "b", WordScorer.MaxEditDistanceLimit + 1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => WordScorer.AreWordsSimilar("a", "b", -1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => WordScorer.AreWordsSimilar("a", "b", WordScorer.MaxEditDistanceLimit + 1));
         }
 
         [Fact]
@@ -569,20 +569,20 @@ namespace FuzzyScorer.Tests
         }
 
         [Fact]
-        public void GroupWordsBySimilarity_InvalidDistance_ThrowsArgumentException()
+        public void GroupWordsBySimilarity_InvalidDistance_ThrowsArgumentOutOfRangeException()
         {
             var words = new List<string> { "apple" };
 
-            Assert.Throws<ArgumentException>(() =>
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
                 WordScorer.GroupWordsBySimilarity(words, -1, CancellationToken.None));
-            Assert.Throws<ArgumentException>(() =>
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
                 WordScorer.GroupWordsBySimilarity(words, WordScorer.MaxEditDistanceLimit + 1, CancellationToken.None));
         }
 
         [Fact]
         public void GroupSimilarWords_EmptyInput_InvalidDistance_StillThrows()
         {
-            Assert.Throws<ArgumentException>(() =>
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
                 WordScorer.GroupSimilarWords("   ", WordScorer.MaxEditDistanceLimit + 1));
         }
 
