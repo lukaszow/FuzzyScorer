@@ -45,17 +45,28 @@ namespace FuzzyScorer
             int maxEditDistance = (int)Math.Round(sensitivity * WordScorer.MaxEditDistanceLimit);
 
             var wordsWithLines = WordScorer.NormalizeAndExtractWordsWithLines(inputText, cancellationToken);
-            var allWords = wordsWithLines.Select(entry => entry.Word).ToList();
-            int originalSize = allWords.Count;
+            int originalSize = wordsWithLines.Count;
 
-            var freqDict = allWords
-                .GroupBy(w => w, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+            var freqDict = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var wordLineMap = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
 
-            var groups = WordScorer.BuildSimilarityGroups(allWords, maxEditDistance, cancellationToken);
+            foreach (var (word, lineNumber) in wordsWithLines)
+            {
+                freqDict[word] = freqDict.TryGetValue(word, out int count) ? count + 1 : 1;
+
+                if (!wordLineMap.TryGetValue(word, out var lines))
+                {
+                    lines = new List<int>();
+                    wordLineMap[word] = lines;
+                }
+
+                lines.Add(lineNumber);
+            }
+
+            var groups = WordScorer.BuildSimilarityGroups(
+                wordsWithLines.Select(entry => entry.Word), maxEditDistance, cancellationToken);
             int compressedSize = groups.Count;
 
-            var wordLineMap = BuildWordLineMap(wordsWithLines);
             var errors = DetectErrors(groups, freqDict, wordLineMap);
 
             return new FuzzyScorerResult(originalSize, compressedSize, errors);
@@ -133,24 +144,6 @@ namespace FuzzyScorer
         private static int GetFrequency(string word, Dictionary<string, int> freqDict)
         {
             return freqDict.TryGetValue(word, out var frequency) ? frequency : 1;
-        }
-
-        private static Dictionary<string, List<int>> BuildWordLineMap(List<(string Word, int LineNumber)> wordsWithLines)
-        {
-            var map = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var (word, lineNumber) in wordsWithLines)
-            {
-                if (!map.TryGetValue(word, out var lines))
-                {
-                    lines = new List<int>();
-                    map[word] = lines;
-                }
-
-                lines.Add(lineNumber);
-            }
-
-            return map;
         }
     }
 }

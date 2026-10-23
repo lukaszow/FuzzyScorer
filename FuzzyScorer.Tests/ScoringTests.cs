@@ -587,11 +587,22 @@ namespace FuzzyScorer.Tests
         }
 
         [Fact]
-        public void Similarity_ComparisonBudgetExceeded_ThrowsArgumentException()
+        public void Similarity_ExactMatching_DoesNotConsumeBudget()
         {
             var words = string.Join(" ", Enumerable.Range(0, 5000).Select(i => "w" + i));
 
-            var ex = Assert.Throws<ArgumentException>(() => WordScorer.GroupSimilarWords(words, 0));
+            var results = WordScorer.GroupSimilarWords(words, 0);
+
+            Assert.Equal(5000, results.Count);
+        }
+
+        [Fact]
+        public void Similarity_ComparisonBudgetExceeded_ThrowsArgumentException()
+        {
+            var words = new[] { "aaaaaa", "bbbbbb", "cccccc", "dddddd", "eeeeee", "ffffff" };
+
+            var ex = Assert.Throws<ArgumentException>(() =>
+                WordScorer.BuildSimilarityGroups(words, 4, comparisonLimit: 10, CancellationToken.None));
             Assert.Contains("comparisons", ex.Message);
         }
 
