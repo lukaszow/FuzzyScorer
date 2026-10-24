@@ -2,19 +2,91 @@
 
 [![NuGet](https://img.shields.io/nuget/v/FuzzyScorer)](https://www.nuget.org/packages/FuzzyScorer)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/FuzzyScorer)](https://www.nuget.org/packages/FuzzyScorer)
+[![CI](https://github.com/lukaszow/FuzzyScorer/actions/workflows/ci.yml/badge.svg)](https://github.com/lukaszow/FuzzyScorer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/lukaszow/FuzzyScorer)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![Demo](https://img.shields.io/badge/demo-live%20word%20cloud-blueviolet)](https://github.com/lukaszow/FuzzyScorer.Demo)
 
 > [Polska wersja dokumentacji](README.pl.md)
 
 FuzzyScorer is a .NET library that counts words in noisy text and merges typos with their
-correct forms — e.g. `"aple"` and `"Apple"` are counted as `"apple"` — giving accurate
-frequencies in a single call.
+correct forms — `"aple"` and `"Apple"` are counted as `"apple"` — so you get accurate word
+frequencies in a single call. Matching is **structural** (Levenshtein distance), not
+semantic: it is deterministic, runs fully offline, and needs no model or configuration.
 
-Use the static `WordScorer` class for quick frequency/similarity analysis, or inject
-`IFuzzyScorer` for asynchronous typo detection — no configuration and no dependencies.
+Two entry points, both dependency-free:
 
-## Table of contents
+- **`WordScorer`** — static methods for quick frequency and similarity analysis.
+- **`IFuzzyScorer` / `FuzzyScorer`** — injectable, asynchronous API that also detects typos,
+  with line numbers and suggestions.
+
+| At a glance | |
+|---|---|
+| Package | [`FuzzyScorer`](https://www.nuget.org/packages/FuzzyScorer) — MIT, zero runtime dependencies |
+| Runtime | .NET 10 (`net10.0`) |
+| Algorithm | Levenshtein distance with a configurable threshold (0–50) |
+| Input | Raw text — Unicode NFC, punctuation, apostrophes, hyphens and diacritics are handled for you |
+| Output | Word counts, similarity groups, typo list with line numbers and suggestions |
+| Cost | ~3 ms for 10,000 words without merging, ~32 ms with typo merging (see [Performance](#performance)) |
+| Safety | Hard caps on input size, word count and comparison budget — no unbounded quadratic work |
+
+## Use cases
+
+Every case below starts from the same idea: normalize the text, count the words, and let
+near-identical spellings collapse into one group.
+
+**Text analytics**
+
+- **Survey and feedback word clouds** — merge `"Excelent"` into `"Excellent"` so the cloud
+  reflects the real consensus instead of splitting the same opinion across two entries.
+- **NLP preprocessing** — consolidate the vocabulary before topic modelling or embeddings;
+  `"aple"` and `"apple"` become a single feature instead of two rare ones.
+- **Data-quality metrics** — `result.Errors.Count / result.TotalWords` gives a typo rate per
+  document, and every `ErrorEntry` carries the line numbers of the offending spellings.
+
+**Data cleaning and matching**
+
+- **Record deduplication** — spot duplicates such as `"John"` / `"Jon"` in customer or
+  product data (tokenize each field first — the API compares words).
+- **Import validation** — group hand-typed categories or city names and pick a canonical
+  value instead of shipping five spellings of the same thing.
+- **Log and ticket clustering** — run `GroupWordsBySimilarity` over pre-tokenized messages to
+  collapse recurring errors that differ only by a typo.
+
+**Content and security**
+
+- **OCR post-correction** — repair scans where `l` (lowercase L) is confused with `I`
+  (uppercase I): `"TlGER"` is merged with `"TIGER"`.
+- **Spam and obfuscation detection** — surface words that dodge naive filters: `"M0ney"`,
+  `"W4tch"`.
+- **Search and autocomplete** — `AreWordsSimilar("aple", "apple", 1)` powers "did you mean"
+  checks on user input without any external service.
+
+### When not to use it
+
+- **Semantic similarity** — `"car"` and `"automobile"` never merge; use embeddings for meaning.
+- **Phonetic matching** — `"Lee"` and `"Leigh"` are three edits apart; use Soundex or Metaphone.
+- **Whole phrases or records** — this library matches **words**, not sentences; split fields
+  into tokens first (or use a search engine).
+- **Huge vocabularies** — grouping is capped at 10,000,000 distinct-word comparisons; shard
+  the input or use a dedicated index beyond that.
+
+## Live demo
+
+[**FuzzyScorer.Demo**](https://github.com/lukaszow/FuzzyScorer.Demo) is a Blazor WebAssembly
+app that repairs a live word cloud in the browser: paste noisy text and watch the misspellings
+collapse into real groups in real time.
+
+```bash
+git clone https://github.com/lukaszow/FuzzyScorer.Demo
+cd FuzzyScorer.Demo
+dotnet run   # open http://localhost:5231
+```
+
+The demo targets .NET 10 and was built against an earlier version of the package (1.1.2), so
+it illustrates the concept rather than the current API surface.
+
+## Contents
 
 - [Quick start](#quick-start)
 - [How it works](#how-it-works)
@@ -23,6 +95,7 @@ Use the static `WordScorer` class for quick frequency/similarity analysis, or in
 - [Limits & security](#limits--security)
 - [Performance](#performance)
 - [FAQ](#faq)
+- [Contributing & docs](#contributing--docs)
 - [License](#license)
 
 ## Quick start
@@ -64,17 +137,6 @@ That is the whole library in one call — no configuration or extra setup.
 
 **Note:** FuzzyScorer is structural, not semantic. `"TIGER"` and `"TlGER"` will be merged,
 but `"cat"` and `"dog"` never will.
-
-### Use cases
-
-- **Surveys and feedback** — merge typos in survey results (e.g. `"Excelent"` and
-  `"Excellent"`) to reveal the real consensus in a word cloud.
-- **OCR cleaning** — fix text where `"l"` (lowercase L) is confused with `"I"` (uppercase I)
-  in scanned documents.
-- **Record deduplication** — detect duplicates such as `"John"` and `"Jon"` in a customer
-  database.
-- **Spam filtering** — catch obfuscated words that bypass simple filters (e.g. `"M0ney"`,
-  `"W4tch"`).
 
 ## API
 
@@ -292,12 +354,30 @@ Use `IFuzzyScorer.ScoreAsync` — it reports every distinct spelling that is not
 group's representative (most frequent, then longest, then ordinal), with 1-based line
 numbers.
 
+**Does it work for languages other than English?**
+Yes. Text is normalized with Unicode NFC and split on any Unicode whitespace, so
+accented and non-Latin scripts work out of the box. Set `IgnoreDiacritics = true` if
+`"café"` should match `"cafe"`.
+
+**Can I match names or phrases instead of single words?**
+No — the API operates on tokens. Split a record into fields/tokens first and compare
+them one by one (or group them with `GroupWordsBySimilarity`).
+
 **What happens to words longer than 256 characters?**
 They are silently dropped.
 
 **Is configuration or DI required?**
 No. The static methods work out of the box; the instance API is simply
 `new FuzzyScorer()`.
+
+## Contributing & docs
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — build, test, and pull-request guidelines
+- [DEVELOPMENT.md](DEVELOPMENT.md) — local setup and tooling
+- [SECURITY.md](SECURITY.md) — threat model and vulnerability reporting
+- [CHANGELOG.md](CHANGELOG.md) — release history
+- [benchmarks/RESULTS.md](benchmarks/RESULTS.md) — benchmark methodology and numbers
+- [FuzzyScorer.Demo](https://github.com/lukaszow/FuzzyScorer.Demo) — Blazor WebAssembly demo
 
 ## License
 
